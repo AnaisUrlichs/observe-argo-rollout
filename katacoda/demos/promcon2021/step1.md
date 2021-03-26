@@ -1,0 +1,9 @@
+## Yolo
+
+### Components used:
+
+| Project | Version | 
+| ------------- | ------------- |
+| Kubernetes | 1.19 |  
+| Prometheus| v2.24.0-rc.0 |
+| Argo Rollouts | [v0.10.2](https://github.com/argoproj/argo-rollouts/releases/tag/v0.10.2) |

@@ -1,2 +1,3 @@
 # observe-argo-rollout
-Automating Kubernetes Rollouts with Argo and Prometheus
+
+Demo for _Automating and Monitoring Kubernetes Rollouts with Argo and Prometheus_
