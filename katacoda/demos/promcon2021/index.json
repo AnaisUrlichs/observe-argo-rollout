@@ -3,6 +3,14 @@
   "description": "\uD83D\uDD25",
   "difficulty": "YOLO",
   "details": {
+    "assets": {
+      "host01": [
+        {
+          "file": "setup.sh",
+          "target": "/root/"
+        }
+      ]
+    },
     "steps": [
       {
         "title": "Yolo Demo Resources",
@@ -21,10 +29,9 @@
   "environment": {
     "uilayout": "terminal",
     "uisettings": "yaml",
-    "showdashboard": true,
-    "uieditorpath": "/root/editor"
+    "showdashboard": true
   },
   "backend": {
-    "imageid": "kubernetes-cluster-running:1.19"
+    "imageid": "kubernetes-cluster-running:1.18"
   }
 }
