@@ -23,7 +23,7 @@ test argo rollout version
 kubectl argo rollouts version
 ```
 
-have istioctl installed and install istioctl
+have istioctl installed and install istio
 
 ```
 istioctl install --set profile=demo
