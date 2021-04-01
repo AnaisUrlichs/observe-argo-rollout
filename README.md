@@ -2,65 +2,62 @@
 
 Demo for _Automating and Monitoring Kubernetes Rollouts with Argo and Prometheus_
 
-Install Argo Rollouts 
+Install the Prometheus Operator
+
+```
+helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+
+helm repo update
+
+helm install prom prometheus-community/kube-prometheus-stack
+```
+
+Install Argo Rollouts to your local cluster
 
 ```
 kubectl create namespace argo-rollouts
 kubectl apply -n argo-rollouts -f https://raw.githubusercontent.com/argoproj/argo-rollouts/stable/manifests/install.yaml
 ```
 
-Install kubectl plugin
-
-```
-curl -LO https://github.com/argoproj/argo-rollouts/releases/latest/download/kubectl-argo-rollouts-linux-amd64
-chmod +x ./kubectl-argo-rollouts-linux-amd64
-sudo mv ./kubectl-argo-rollouts-linux-amd64 /usr/local/bin/kubectl-argo-rollouts
-```
-
-test argo rollout version
-
-```
-kubectl argo rollouts version
-```
-
-have istioctl installed and install istio
-
-```
-istioctl install --set profile=demo
-```
-
-```
-kubectl get all -n istio-system
-```
-
-Install prometheus add on
-
-```
-kubectl apply -f https://raw.githubusercontent.com/istio/istio/release-1.9/samples/addons/prometheus.yaml
-```
-
-Open prometheus dashboard
-
-```
-istioctl dashboard prometheus
-```
-
-This will not show anything since nothing is installed yet.
-
 Installing the different resources to configure the application — within manifests/application
 
 ```
 cd manifests/application
-kubectl apply -f ./
+
+kubectl apply -f analysis-template.yaml
+kubectl apply -f services.yaml
+kubectl apply -f application-rollout.yaml
 ```
 
-Now have a look at the rollout 
+Note that you have to apply the application rollout after you apply the services; otherwise, it will go look for the services and not find it ⇒ the rollout will crash.
+
+Make sure the rollout has happened correctly
 
 ```
 kubectl argo rollouts get rollout rollouts-demo
 ```
 
-Now deploy a new app version that will trigger the canary deployment
+Access the application
+
 ```
-kubectl argo rollouts set image rollouts-demo rollouts-demo=argoproj/rollouts-demo:yellow
+kubectl port-forward
+```
+
+Update the image
+
+```
+kubectl argo rollouts set image rollouts-demo \
+  rollouts-demo=argoproj/rollouts-demo:yellow
+```
+
+Access the Prometheus port
+
+```
+kubectl port-forward service/prom-kube-prometheus-stack-prometheus 9090
+```
+
+Access the App
+
+```
+kubectl port-forward service/rollouts-demo-stable 8080:80
 ```
