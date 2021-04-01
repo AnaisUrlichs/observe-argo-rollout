@@ -3,17 +3,11 @@ kind: Rollout
 metadata:
   name: rollouts-demo
 spec:
-  replicas: 1
+  replicas: 5
   strategy:
     canary:
       canaryService: rollouts-demo-canary
       stableService: rollouts-demo-stable
-      trafficRouting:
-        istio:
-          virtualService:
-            name: rollouts-demo-vsvc
-            routes:
-            - primary # At least one route is required
       analysis:
         templates:
         - templateName: success-rate
@@ -38,7 +32,6 @@ spec:
     metadata:
       labels:
         app: rollouts-demo
-        istio-injection: enabled
     spec:
       containers:
       - name: rollouts-demo
