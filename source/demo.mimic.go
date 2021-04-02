@@ -6,6 +6,7 @@ package main
 import (
 	"fmt"
 	"io/ioutil"
+	"path/filepath"
 	"time"
 
 	"github.com/bwplotka/mimic"
@@ -171,14 +172,18 @@ func getPrometheus(name string) (appsv1.StatefulSet, corev1.Service, corev1.Conf
 	return set, srv, promConfigAndMount.ConfigMap()
 }
 
-func getGrafana(promURL string, name string) (appsv1.StatefulSet, corev1.Service, corev1.ConfigMap) {
+func getGrafana(promURL string, name string) (appsv1.StatefulSet, corev1.Service, corev1.ConfigMap, corev1.ConfigMap, corev1.ConfigMap) {
 	const (
 		configVolumeName  = "grafana-config"
 		configVolumeMount = "/etc/grafana"
 		httpPort          = 3000
 	)
 
-	configAndMount := volumes.ConfigAndMount{
+	var (
+		dashVolumeMount = filepath.Join(configVolumeMount, "provisioning", "dashboards")
+	)
+
+	cfgCM := volumes.ConfigAndMount{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   configVolumeName,
 			Labels: map[string]string{selectorName: name},
@@ -204,7 +209,17 @@ check_for_updates = false
 default_theme = dark
 [security]
 allow_embedding = true`,
-			"provisioning/datasource.yaml": `apiVersion: 1
+		},
+	}
+
+	dsCM := volumes.ConfigAndMount{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:   configVolumeName + "ds",
+			Labels: map[string]string{selectorName: name},
+		},
+		VolumeMount: corev1.VolumeMount{Name: configVolumeName + "ds", MountPath: filepath.Join(configVolumeMount, "provisioning")},
+		Data: map[string]string{
+			"datasource.yml": `apiVersion: 1
 
 # list of datasources that should be deleted from the database
 deleteDatasources:
@@ -219,6 +234,18 @@ datasources:
   url: http://` + promURL + `
   isDefault: true
   editable: true
+`,
+		},
+	}
+
+	dshCM := volumes.ConfigAndMount{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:   configVolumeName + "dsh",
+			Labels: map[string]string{selectorName: name},
+		},
+		VolumeMount: corev1.VolumeMount{Name: configVolumeName + "dsh", MountPath: dashVolumeMount},
+		Data: map[string]string{
+			"dashboard.yml": `apiVersion: 1
 
 providers:
 - name: 'Prometheus'
@@ -228,7 +255,7 @@ providers:
   disableDeletion: false
   editable: true
   options:
-    path: /etc/grafana/provisioning/dashboards
+	path: /etc/grafana/provisioning/dashboards
 `,
 		},
 	}
@@ -271,7 +298,7 @@ providers:
 		},
 		Args:         []string{"--config=" + configVolumeMount + "grafana.ini"},
 		Ports:        []corev1.ContainerPort{{Name: "m-http", ContainerPort: httpPort}},
-		VolumeMounts: volumes.VolumesAndMounts{configAndMount.VolumeAndMount()}.VolumeMounts(),
+		VolumeMounts: volumes.VolumesAndMounts{cfgCM.VolumeAndMount(), dsCM.VolumeAndMount(), dshCM.VolumeAndMount()}.VolumeMounts(),
 		SecurityContext: &corev1.SecurityContext{
 			RunAsNonRoot: swag.Bool(true),
 			RunAsUser:    swag.Int64(65534),
@@ -306,7 +333,7 @@ providers:
 				},
 				Spec: corev1.PodSpec{
 					Containers: []corev1.Container{container},
-					Volumes:    volumes.VolumesAndMounts{configAndMount.VolumeAndMount()}.Volumes(),
+					Volumes:    volumes.VolumesAndMounts{cfgCM.VolumeAndMount(), dsCM.VolumeAndMount(), dshCM.VolumeAndMount()}.Volumes(),
 				},
 			},
 			Selector: &metav1.LabelSelector{
@@ -315,7 +342,7 @@ providers:
 		},
 	}
 
-	return set, srv, configAndMount.ConfigMap()
+	return set, srv, cfgCM.ConfigMap(), dsCM.ConfigMap(), dshCM.ConfigMap()
 }
 
 func EncodeYAML(in ...interface{}) string {

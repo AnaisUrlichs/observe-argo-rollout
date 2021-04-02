@@ -44,10 +44,20 @@ spec:
         volumeMounts:
         - mountPath: /etc/grafana
           name: grafana-config
+        - mountPath: /etc/grafana/provisioning
+          name: grafana-configds
+        - mountPath: /etc/grafana/provisioning/dashboards
+          name: grafana-configdsh
       volumes:
       - configMap:
           name: grafana-config
         name: grafana-config
+      - configMap:
+          name: grafana-configds
+        name: grafana-configds
+      - configMap:
+          name: grafana-configdsh
+        name: grafana-configdsh
   updateStrategy: {}
 status:
   replicas: 0
@@ -93,7 +103,16 @@ data:
     default_theme = dark
     [security]
     allow_embedding = true
-  provisioning/datasource.yaml: |
+kind: ConfigMap
+metadata:
+  creationTimestamp: null
+  labels:
+    app.kubernetes.io/name: grafana
+  name: grafana-config
+---
+apiVersion: v1
+data:
+  datasource.yml: |
     apiVersion: 1
 
     # list of datasources that should be deleted from the database
@@ -109,19 +128,21 @@ data:
       url: http://prom.demo.svc.cluster.local:9090
       isDefault: true
       editable: true
-
-    providers:
-    - name: 'Prometheus'
-      orgId: 1
-      folder: ''
-      type: file
-      disableDeletion: false
-      editable: true
-      options:
-        path: /etc/grafana/provisioning/dashboards
 kind: ConfigMap
 metadata:
   creationTimestamp: null
   labels:
     app.kubernetes.io/name: grafana
-  name: grafana-config
+  name: grafana-configds
+---
+apiVersion: v1
+data:
+  dashboard.yml: "apiVersion: 1\n\nproviders:\n- name: 'Prometheus'\n  orgId: 1\n
+    \ folder: ''\n  type: file\n  disableDeletion: false\n  editable: true\n  options:\n\tpath:
+    /etc/grafana/provisioning/dashboards\n"
+kind: ConfigMap
+metadata:
+  creationTimestamp: null
+  labels:
+    app.kubernetes.io/name: grafana
+  name: grafana-configdsh
