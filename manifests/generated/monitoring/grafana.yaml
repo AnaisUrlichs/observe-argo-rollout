@@ -1,5 +1,5 @@
 apiVersion: apps/v1
-kind: StatefulSet
+kind: Deployment
 metadata:
   creationTimestamp: null
   labels:
@@ -10,7 +10,7 @@ spec:
   selector:
     matchLabels:
       app.kubernetes.io/name: grafana
-  serviceName: grafana
+  strategy: {}
   template:
     metadata:
       creationTimestamp: null
@@ -19,8 +19,8 @@ spec:
     spec:
       containers:
       - args:
-        - --config=/etc/grafanagrafana.ini
-        image: grafana/grafana:4.7
+        - --config=/etc/grafana/grafana.ini
+        image: grafana/grafana:7.5.2
         imagePullPolicy: Always
         name: grafana
         ports:
@@ -58,9 +58,7 @@ spec:
       - configMap:
           name: grafana-configdsh
         name: grafana-configdsh
-  updateStrategy: {}
-status:
-  replicas: 0
+status: {}
 ---
 apiVersion: v1
 kind: Service
@@ -137,9 +135,18 @@ metadata:
 ---
 apiVersion: v1
 data:
-  dashboard.yml: "apiVersion: 1\n\nproviders:\n- name: 'Prometheus'\n  orgId: 1\n
-    \ folder: ''\n  type: file\n  disableDeletion: false\n  editable: true\n  options:\n\tpath:
-    /etc/grafana/provisioning/dashboards\n"
+  dashboard.yml: |
+    apiVersion: 1
+
+    providers:
+    - name: 'Prometheus'
+      orgId: 1
+      folder: ''
+      type: file
+      disableDeletion: false
+      editable: true
+      options:
+        path: /etc/grafana/provisioning/dashboards
 kind: ConfigMap
 metadata:
   creationTimestamp: null

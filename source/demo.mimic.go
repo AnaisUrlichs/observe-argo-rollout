@@ -172,7 +172,7 @@ func getPrometheus(name string) (appsv1.StatefulSet, corev1.Service, corev1.Conf
 	return set, srv, promConfigAndMount.ConfigMap()
 }
 
-func getGrafana(promURL string, name string) (appsv1.StatefulSet, corev1.Service, corev1.ConfigMap, corev1.ConfigMap, corev1.ConfigMap) {
+func getGrafana(promURL string, name string) (appsv1.Deployment, corev1.Service, corev1.ConfigMap, corev1.ConfigMap, corev1.ConfigMap) {
 	const (
 		configVolumeName  = "grafana-config"
 		configVolumeMount = "/etc/grafana"
@@ -255,7 +255,7 @@ providers:
   disableDeletion: false
   editable: true
   options:
-	path: /etc/grafana/provisioning/dashboards
+    path: /etc/grafana/provisioning/dashboards
 `,
 		},
 	}
@@ -285,7 +285,7 @@ providers:
 
 	container := corev1.Container{
 		Name:            "grafana",
-		Image:           "grafana/grafana:4.7",
+		Image:           "grafana/grafana:7.5.2",
 		ImagePullPolicy: corev1.PullAlways,
 		ReadinessProbe: &corev1.Probe{
 			Handler: corev1.Handler{
@@ -296,7 +296,7 @@ providers:
 			},
 			SuccessThreshold: 3,
 		},
-		Args:         []string{"--config=" + configVolumeMount + "grafana.ini"},
+		Args:         []string{"--config=" + filepath.Join(configVolumeMount, "grafana.ini")},
 		Ports:        []corev1.ContainerPort{{Name: "m-http", ContainerPort: httpPort}},
 		VolumeMounts: volumes.VolumesAndMounts{cfgCM.VolumeAndMount(), dsCM.VolumeAndMount(), dshCM.VolumeAndMount()}.VolumeMounts(),
 		SecurityContext: &corev1.SecurityContext{
@@ -315,18 +315,17 @@ providers:
 		},
 	}
 
-	set := appsv1.StatefulSet{
+	dpl := appsv1.Deployment{
 		TypeMeta: metav1.TypeMeta{
-			Kind:       "StatefulSet",
+			Kind:       "Deployment",
 			APIVersion: "apps/v1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   name,
 			Labels: map[string]string{selectorName: name},
 		},
-		Spec: appsv1.StatefulSetSpec{
-			Replicas:    swag.Int32(1),
-			ServiceName: name,
+		Spec: appsv1.DeploymentSpec{
+			Replicas: swag.Int32(1),
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: map[string]string{selectorName: name},
@@ -342,7 +341,7 @@ providers:
 		},
 	}
 
-	return set, srv, cfgCM.ConfigMap(), dsCM.ConfigMap(), dshCM.ConfigMap()
+	return dpl, srv, cfgCM.ConfigMap(), dsCM.ConfigMap(), dshCM.ConfigMap()
 }
 
 func EncodeYAML(in ...interface{}) string {
