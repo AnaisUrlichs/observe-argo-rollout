@@ -26,6 +26,7 @@ import (
 
 const (
 	selectorName = "app.kubernetes.io/name"
+	namespace    = "demo"
 )
 
 func main() {
@@ -34,18 +35,23 @@ func main() {
 	// Make sure to generate at the very end.
 	defer generator.Generate()
 
-	genPrometheus(generator.With("prometheus"), "prom")
+	generator = generator.With("monitoring")
+
+	promSet, promSrv, promConfigAndMount := getPrometheus("prom")
+
+	generator.Add("prom.yaml", encoding.GhodssYAML(promSet, promSrv, promConfigAndMount))
+	generator.Add("grafana.yaml", encoding.GhodssYAML(
+		getGrafana(fmt.Sprintf("%s.%s.svc.cluster.local:%d", promSrv.Name, namespace, promSrv.Spec.Ports[0].Port), "grafana")),
+	)
+
 }
 
-func genPrometheus(generator *mimic.Generator, name string) {
+func getPrometheus(name string) (appsv1.StatefulSet, corev1.Service, corev1.ConfigMap) {
 	const (
-		replicas = 1
-
 		configVolumeName  = "prometheus-config"
 		configVolumeMount = "/etc/prometheus"
 		dataPath          = "/data"
-
-		httpPort = 9090
+		httpPort          = 9090
 	)
 
 	promConfigAndMount := volumes.ConfigAndMount{
@@ -69,10 +75,7 @@ func genPrometheus(generator *mimic.Generator, name string) {
 			Labels: map[string]string{selectorName: name},
 		},
 		Spec: corev1.ServiceSpec{
-			Type: corev1.ServiceTypeNodePort,
-			// Making it available on Port 80 to external connections using ExternalIPs.
-			// If the Kubernetes cluster was running on a cloud provider then it would use a
-			// LoadBalancer service type.
+			Type:     corev1.ServiceTypeNodePort,
 			Selector: map[string]string{selectorName: name},
 			Ports: []corev1.ServicePort{
 				{
@@ -92,7 +95,7 @@ func genPrometheus(generator *mimic.Generator, name string) {
 		},
 	}
 
-	prometheusContainer := corev1.Container{
+	container := corev1.Container{
 		Name:  "prometheus",
 		Image: "prom/prometheus:v2.26.0",
 		Args: []string{
@@ -102,7 +105,6 @@ func genPrometheus(generator *mimic.Generator, name string) {
 			fmt.Sprintf("--storage.tsdb.path=%s", dataPath),
 			"--web.enable-lifecycle",
 			"--web.enable-admin-api",
-			fmt.Sprintf("--web.external-url=https://localhost:%v", httpPort),
 		},
 		Env: []corev1.EnvVar{
 			{Name: "HOSTNAME", ValueFrom: &corev1.EnvVarSource{
@@ -149,14 +151,14 @@ func genPrometheus(generator *mimic.Generator, name string) {
 			Labels: map[string]string{selectorName: name},
 		},
 		Spec: appsv1.StatefulSetSpec{
-			Replicas:    swag.Int32(replicas),
+			Replicas:    swag.Int32(1),
 			ServiceName: name,
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: map[string]string{selectorName: name},
 				},
 				Spec: corev1.PodSpec{
-					Containers: []corev1.Container{prometheusContainer},
+					Containers: []corev1.Container{container},
 					Volumes:    volumes.VolumesAndMounts{promConfigAndMount.VolumeAndMount(), dataVM}.Volumes(),
 				},
 			},
@@ -166,7 +168,154 @@ func genPrometheus(generator *mimic.Generator, name string) {
 		},
 	}
 
-	generator.Add(name+".yaml", encoding.GhodssYAML(set, srv, promConfigAndMount.ConfigMap()))
+	return set, srv, promConfigAndMount.ConfigMap()
+}
+
+func getGrafana(promURL string, name string) (appsv1.StatefulSet, corev1.Service, corev1.ConfigMap) {
+	const (
+		configVolumeName  = "grafana-config"
+		configVolumeMount = "/etc/grafana"
+		httpPort          = 3000
+	)
+
+	configAndMount := volumes.ConfigAndMount{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:   configVolumeName,
+			Labels: map[string]string{selectorName: name},
+		},
+		VolumeMount: corev1.VolumeMount{Name: configVolumeName, MountPath: configVolumeMount},
+		Data: map[string]string{
+			"grafana.ini": `[server]
+root_url = %(protocol)s://%(domain)s/web/grafana
+[paths]
+provisioning = /etc/grafana/provisioning
+data = /var/lib/grafana
+logs = /var/log/grafana
+[auth.basic]
+enabled = false
+[auth.anonymous]
+# enable anonymous access
+enabled = true
+org_role = admin
+[analytics]
+reporting_enabled = false
+check_for_updates = false
+[users]
+default_theme = dark
+[security]
+allow_embedding = true`,
+			"provisioning/datasource.yaml": `apiVersion: 1
+
+# list of datasources that should be deleted from the database
+deleteDatasources:
+  - name: Prometheus
+    orgId: 1
+
+datasources:
+- name: Prometheus
+  type: prometheus
+  access: proxy
+  orgId: 1
+  url: http://` + promURL + `
+  isDefault: true
+  editable: true
+
+providers:
+- name: 'Prometheus'
+  orgId: 1
+  folder: ''
+  type: file
+  disableDeletion: false
+  editable: true
+  options:
+    path: /etc/grafana/provisioning/dashboards
+`,
+		},
+	}
+
+	srv := corev1.Service{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Service",
+			APIVersion: "v1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:   name,
+			Labels: map[string]string{selectorName: name},
+		},
+		Spec: corev1.ServiceSpec{
+			Type:     corev1.ServiceTypeNodePort,
+			Selector: map[string]string{selectorName: name},
+			Ports: []corev1.ServicePort{
+				{
+					Name:       "http",
+					Port:       httpPort,
+					TargetPort: intstr.FromInt(httpPort),
+					NodePort:   30556,
+				},
+			},
+		},
+	}
+
+	container := corev1.Container{
+		Name:            "grafana",
+		Image:           "grafana/grafana:4.7",
+		ImagePullPolicy: corev1.PullAlways,
+		ReadinessProbe: &corev1.Probe{
+			Handler: corev1.Handler{
+				HTTPGet: &corev1.HTTPGetAction{
+					Port: intstr.FromInt(httpPort),
+					Path: "/robots.txt",
+				},
+			},
+			SuccessThreshold: 3,
+		},
+		Args:         []string{"--config=" + configVolumeMount + "grafana.ini"},
+		Ports:        []corev1.ContainerPort{{Name: "m-http", ContainerPort: httpPort}},
+		VolumeMounts: volumes.VolumesAndMounts{configAndMount.VolumeAndMount()}.VolumeMounts(),
+		SecurityContext: &corev1.SecurityContext{
+			RunAsNonRoot: swag.Bool(true),
+			RunAsUser:    swag.Int64(65534),
+		},
+		Resources: corev1.ResourceRequirements{
+			Requests: corev1.ResourceList{
+				corev1.ResourceCPU:    resource.MustParse("200m"),
+				corev1.ResourceMemory: resource.MustParse("200Mi"),
+			},
+			Limits: corev1.ResourceList{
+				corev1.ResourceCPU:    resource.MustParse("200m"),
+				corev1.ResourceMemory: resource.MustParse("200Mi"),
+			},
+		},
+	}
+
+	set := appsv1.StatefulSet{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "StatefulSet",
+			APIVersion: "apps/v1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:   name,
+			Labels: map[string]string{selectorName: name},
+		},
+		Spec: appsv1.StatefulSetSpec{
+			Replicas:    swag.Int32(1),
+			ServiceName: name,
+			Template: corev1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: map[string]string{selectorName: name},
+				},
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{container},
+					Volumes:    volumes.VolumesAndMounts{configAndMount.VolumeAndMount()}.Volumes(),
+				},
+			},
+			Selector: &metav1.LabelSelector{
+				MatchLabels: map[string]string{selectorName: name},
+			},
+		},
+	}
+
+	return set, srv, configAndMount.ConfigMap()
 }
 
 func EncodeYAML(in ...interface{}) string {
@@ -287,9 +436,9 @@ func prometheusConfig() prometheus.Config {
 						Regex:        prometheus.MustNewRegexp("m-.+"),
 					},
 					{
-						// Antipattern. Prefer allow-list instead.
-						Action: prometheus.RelabelLabelMap,
-						Regex:  prometheus.MustNewRegexp("__meta_kubernetes_pod_label_(.+)"),
+						SourceLabels: model.LabelNames{"__meta_kubernetes_pod_label_app_kubernetes_io_name"},
+						Action:       prometheus.RelabelReplace,
+						TargetLabel:  "job",
 					},
 					{
 						SourceLabels: model.LabelNames{"__meta_kubernetes_pod_name"},

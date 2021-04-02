@@ -36,7 +36,9 @@ p "# Install argo rollout controller with CRDs to ${NAMESPACE}"
 r "kubectl apply -n ${NAMESPACE} -f manifests/argo-rollouts"
 
 p "# Install Prometheus ${NAMESPACE}"
-r "kubectl apply -n ${NAMESPACE} -f manifests/generated/prometheus"
+r "kubectl apply -n ${NAMESPACE} -f manifests/generated/monitoring"
+
+r "kubectl get -n ${NAMESPACE} po"
 
 # Last entry to run navigation mode.
 navigate

@@ -1,0 +1,127 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  creationTimestamp: null
+  labels:
+    app.kubernetes.io/name: grafana
+  name: grafana
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: grafana
+  serviceName: grafana
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app.kubernetes.io/name: grafana
+    spec:
+      containers:
+      - args:
+        - --config=/etc/grafanagrafana.ini
+        image: grafana/grafana:4.7
+        imagePullPolicy: Always
+        name: grafana
+        ports:
+        - containerPort: 3000
+          name: m-http
+        readinessProbe:
+          httpGet:
+            path: /robots.txt
+            port: 3000
+          successThreshold: 3
+        resources:
+          limits:
+            cpu: 200m
+            memory: 200Mi
+          requests:
+            cpu: 200m
+            memory: 200Mi
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 65534
+        volumeMounts:
+        - mountPath: /etc/grafana
+          name: grafana-config
+      volumes:
+      - configMap:
+          name: grafana-config
+        name: grafana-config
+  updateStrategy: {}
+status:
+  replicas: 0
+---
+apiVersion: v1
+kind: Service
+metadata:
+  creationTimestamp: null
+  labels:
+    app.kubernetes.io/name: grafana
+  name: grafana
+spec:
+  ports:
+  - name: http
+    nodePort: 30556
+    port: 3000
+    targetPort: 3000
+  selector:
+    app.kubernetes.io/name: grafana
+  type: NodePort
+status:
+  loadBalancer: {}
+---
+apiVersion: v1
+data:
+  grafana.ini: |-
+    [server]
+    root_url = %(protocol)s://%(domain)s/web/grafana
+    [paths]
+    provisioning = /etc/grafana/provisioning
+    data = /var/lib/grafana
+    logs = /var/log/grafana
+    [auth.basic]
+    enabled = false
+    [auth.anonymous]
+    # enable anonymous access
+    enabled = true
+    org_role = admin
+    [analytics]
+    reporting_enabled = false
+    check_for_updates = false
+    [users]
+    default_theme = dark
+    [security]
+    allow_embedding = true
+  provisioning/datasource.yaml: |
+    apiVersion: 1
+
+    # list of datasources that should be deleted from the database
+    deleteDatasources:
+      - name: Prometheus
+        orgId: 1
+
+    datasources:
+    - name: Prometheus
+      type: prometheus
+      access: proxy
+      orgId: 1
+      url: http://prom.demo.svc.cluster.local:9090
+      isDefault: true
+      editable: true
+
+    providers:
+    - name: 'Prometheus'
+      orgId: 1
+      folder: ''
+      type: file
+      disableDeletion: false
+      editable: true
+      options:
+        path: /etc/grafana/provisioning/dashboards
+kind: ConfigMap
+metadata:
+  creationTimestamp: null
+  labels:
+    app.kubernetes.io/name: grafana
+  name: grafana-config
