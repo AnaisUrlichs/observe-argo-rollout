@@ -8,6 +8,8 @@
 
 ### Start up
 
-`./setup.sh`{{execute}}
+`bash ./setup.sh`{{execute}}
 
+
+https://[[HOST_SUBDOMAIN]]-30555-[[KATACODA_HOST]].environments.katacoda.com/
 

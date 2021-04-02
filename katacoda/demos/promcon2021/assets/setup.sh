@@ -7,10 +7,11 @@ curl -LO https://github.com/argoproj/argo-rollouts/releases/download/v0.10.2/kub
 chmod +x ./kubectl-argo-rollouts-linux-amd64
 sudo mv ./kubectl-argo-rollouts-linux-amd64 /usr/local/bin/kubectl-argo-rollouts
 
-cd /root
-git clone https://github.com/bwplotka/observe-argo-rollout.git -b /root/demo
-cd /root/demo
-
-# Start k8s.
+# Start k8s
 launch.sh
 
+cd /root
+git clone https://github.com/bwplotka/observe-argo-rollout.git /root/demo
+cd /root/demo
+
+bash demo.sh

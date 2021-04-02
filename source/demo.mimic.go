@@ -43,6 +43,7 @@ func genPrometheus(generator *mimic.Generator, name string) {
 
 		configVolumeName  = "prometheus-config"
 		configVolumeMount = "/etc/prometheus"
+		dataPath          = "/data"
 
 		httpPort = 9090
 	)
@@ -68,14 +69,26 @@ func genPrometheus(generator *mimic.Generator, name string) {
 			Labels: map[string]string{selectorName: name},
 		},
 		Spec: corev1.ServiceSpec{
+			Type: corev1.ServiceTypeNodePort,
+			// Making it available on Port 80 to external connections using ExternalIPs.
+			// If the Kubernetes cluster was running on a cloud provider then it would use a
+			// LoadBalancer service type.
 			Selector: map[string]string{selectorName: name},
 			Ports: []corev1.ServicePort{
 				{
 					Name:       "http",
 					Port:       httpPort,
 					TargetPort: intstr.FromInt(httpPort),
+					NodePort:   30555,
 				},
 			},
+		},
+	}
+
+	dataVM := volumes.VolumeAndMount{
+		VolumeMount: corev1.VolumeMount{
+			Name:      name,
+			MountPath: dataPath,
 		},
 	}
 
@@ -86,6 +99,7 @@ func genPrometheus(generator *mimic.Generator, name string) {
 			fmt.Sprintf("--config.file=%v/prometheus.yaml", configVolumeMount),
 			"--log.level=info",
 			"--storage.tsdb.retention.time=2d",
+			fmt.Sprintf("--storage.tsdb.path=%s", dataPath),
 			"--web.enable-lifecycle",
 			"--web.enable-admin-api",
 			fmt.Sprintf("--web.external-url=https://localhost:%v", httpPort),
@@ -108,7 +122,7 @@ func genPrometheus(generator *mimic.Generator, name string) {
 			SuccessThreshold: 3,
 		},
 		Ports:        []corev1.ContainerPort{{Name: "m-http", ContainerPort: httpPort}},
-		VolumeMounts: volumes.VolumesAndMounts{promConfigAndMount.VolumeAndMount()}.VolumeMounts(),
+		VolumeMounts: volumes.VolumesAndMounts{promConfigAndMount.VolumeAndMount(), dataVM}.VolumeMounts(),
 		SecurityContext: &corev1.SecurityContext{
 			RunAsNonRoot: swag.Bool(false),
 			RunAsUser:    swag.Int64(1000),
@@ -143,7 +157,7 @@ func genPrometheus(generator *mimic.Generator, name string) {
 				},
 				Spec: corev1.PodSpec{
 					Containers: []corev1.Container{prometheusContainer},
-					Volumes:    volumes.VolumesAndMounts{promConfigAndMount.VolumeAndMount()}.Volumes(),
+					Volumes:    volumes.VolumesAndMounts{promConfigAndMount.VolumeAndMount(), dataVM}.Volumes(),
 				},
 			},
 			Selector: &metav1.LabelSelector{
@@ -156,10 +170,11 @@ func genPrometheus(generator *mimic.Generator, name string) {
 }
 
 func EncodeYAML(in ...interface{}) string {
-	cfgBytes, err := ioutil.ReadAll(encoding.YAML(in))
+	cfgBytes, err := ioutil.ReadAll(encoding.YAML(in...))
 	mimic.PanicIfErr(err)
 	return string(cfgBytes)
 }
+
 func prometheusConfig() prometheus.Config {
 	c := prometheus.Config{
 		GlobalConfig: prometheus.GlobalConfig{
@@ -272,9 +287,9 @@ func prometheusConfig() prometheus.Config {
 						Regex:        prometheus.MustNewRegexp("m-.+"),
 					},
 					{
-						SourceLabels: model.LabelNames{"__meta_kubernetes_pod_label_" + selectorName},
-						Action:       prometheus.RelabelReplace,
-						TargetLabel:  "job",
+						// Antipattern. Prefer allow-list instead.
+						Action: prometheus.RelabelLabelMap,
+						Regex:  prometheus.MustNewRegexp("__meta_kubernetes_pod_label_(.+)"),
 					},
 					{
 						SourceLabels: model.LabelNames{"__meta_kubernetes_pod_name"},
