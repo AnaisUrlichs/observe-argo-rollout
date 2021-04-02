@@ -1,0 +1,162 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  creationTimestamp: null
+  labels:
+    app.kubernetes.io/name: prom
+  name: prom
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: prom
+  serviceName: prom
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app.kubernetes.io/name: prom
+    spec:
+      containers:
+      - args:
+        - --config.file=/etc/prometheus/prometheus.yaml
+        - --log.level=info
+        - --storage.tsdb.retention.time=2d
+        - --web.enable-lifecycle
+        - --web.enable-admin-api
+        - --web.external-url=https://localhost:9090
+        env:
+        - name: HOSTNAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        image: prom/prometheus:v2.26.0
+        imagePullPolicy: Always
+        name: prometheus
+        ports:
+        - containerPort: 9090
+          name: m-http
+        readinessProbe:
+          httpGet:
+            path: -/ready
+            port: 9090
+          successThreshold: 3
+        resources:
+          limits:
+            cpu: "1"
+            memory: 500Mi
+          requests:
+            cpu: "1"
+            memory: 500Mi
+        securityContext:
+          runAsNonRoot: false
+          runAsUser: 1000
+        volumeMounts:
+        - mountPath: /etc/prometheus
+          name: prometheus-config
+      volumes:
+      - configMap:
+          name: prometheus-config
+        name: prometheus-config
+  updateStrategy: {}
+status:
+  replicas: 0
+---
+apiVersion: v1
+kind: Service
+metadata:
+  creationTimestamp: null
+  labels:
+    app.kubernetes.io/name: prom
+  name: prom
+spec:
+  ports:
+  - name: http
+    port: 9090
+    targetPort: 9090
+  selector:
+    app.kubernetes.io/name: prom
+status:
+  loadBalancer: {}
+---
+apiVersion: v1
+data:
+  prometheus.yaml: |
+    - global:
+        scrape_interval: 15s
+        external_labels:
+          cluster: demo
+      scrape_configs:
+      - job_name: kube-api
+        scheme: https
+        kubernetes_sd_configs:
+        - role: endpoints
+        bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+        tls_config:
+          ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+          insecure_skip_verify: false
+        follow_redirects: false
+        relabel_configs:
+        - source_labels: [__meta_kubernetes_namespace, __meta_kubernetes_service_name,
+            __meta_kubernetes_endpoint_port_name]
+          regex: default;kubernetes;https
+          action: keep
+      - job_name: kube-nodes
+        scheme: https
+        kubernetes_sd_configs:
+        - role: node
+        bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+        tls_config:
+          ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+          insecure_skip_verify: false
+        follow_redirects: false
+        relabel_configs:
+        - regex: __meta_kubernetes_node_label_(.+)
+          action: labelmap
+        - target_label: __address__
+          replacement: kubernetes.default.svc:443
+        - source_labels: [__meta_kubernetes_node_name]
+          regex: (.+)
+          target_label: __metrics_path__
+          replacement: /api/v1/nodes/${1}/proxy/metrics
+      - job_name: kube-cadvisor
+        scheme: https
+        kubernetes_sd_configs:
+        - role: node
+        bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+        tls_config:
+          ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+          insecure_skip_verify: false
+        follow_redirects: false
+        relabel_configs:
+        - regex: __meta_kubernetes_node_label_(.+)
+          action: labelmap
+        - target_label: __address__
+          replacement: kubernetes.default.svc:443
+        - source_labels: [__meta_kubernetes_node_name]
+          regex: (.+)
+          target_label: __metrics_path__
+          replacement: /api/v1/nodes/${1}/proxy/metrics/cadvisor
+      - job_name: kube-pods
+        kubernetes_sd_configs:
+        - role: pod
+        follow_redirects: false
+        relabel_configs:
+        - source_labels: [__meta_kubernetes_pod_container_port_name]
+          regex: m-.+
+          action: keep
+        - source_labels: [__meta_kubernetes_pod_label_app.kubernetes.io/name]
+          target_label: job
+          action: replace
+        - source_labels: [__meta_kubernetes_pod_name]
+          target_label: pod
+          action: replace
+        - source_labels: [__meta_kubernetes_namespace]
+          target_label: namespace
+          action: replace
+kind: ConfigMap
+metadata:
+  creationTimestamp: null
+  labels:
+    app.kubernetes.io/name: prom
+  name: prometheus-config

@@ -26,14 +26,17 @@ clear
 p "# Verify plugin is installed"
 r "kubectl argo rollouts version"
 
-ARGO_NAMESPACE="argo-rollout" # "argo-rollouts"
+NAMESPACE="demo"
 
 p "# Purge Demo Resources (e.g for demo restart)."
-r "kubectl delete namespace ${ARGO_NAMESPACE}"
-r "kubectl create namespace ${ARGO_NAMESPACE}"
+r "kubectl delete namespace ${NAMESPACE}"
+r "kubectl create namespace ${NAMESPACE}"
 
-p "# Install argo rollout controller with CRDs to ${ARGO_NAMESPACE}"
-r "kubectl apply -n ${ARGO_NAMESPACE} -f manifests/argo-rollouts"
+p "# Install argo rollout controller with CRDs to ${NAMESPACE}"
+r "kubectl apply -n ${NAMESPACE} -f manifests/argo-rollouts"
+
+p "# Install Prometheus ${NAMESPACE}"
+r "kubectl apply -n ${NAMESPACE} -f manifests/generated/prometheus"
 
 # Last entry to run navigation mode.
 navigate
