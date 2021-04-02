@@ -2,6 +2,14 @@
 
 Demo for _Automating and Monitoring Kubernetes Rollouts with Argo and Prometheus_
 
+Create your kind cluster with the ports configured for Ingress
+
+```
+cd mandifests/argo-rollouts
+
+kind create cluster --config kind-cluster.yaml --name demo
+```
+
 Install the Prometheus Operator
 
 ```
@@ -19,13 +27,21 @@ kubectl create namespace argo-rollouts
 kubectl apply -n argo-rollouts -f https://raw.githubusercontent.com/argoproj/argo-rollouts/stable/manifests/install.yaml
 ```
 
+Install the Ingress Controller
+
+```
+kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/master/deploy/static/provider/kind/deploy.yaml
+```
+
 Installing the different resources to configure the application — within manifests/application
 
 ```
-cd manifests/application
+cd ..
+cd application
 
-kubectl apply -f analysis-template.yaml
 kubectl apply -f services.yaml
+kubectl apply -f analysis-template.yaml
+kubectl apply -f ingress.yaml
 kubectl apply -f application-rollout.yaml
 ```
 
@@ -40,7 +56,7 @@ kubectl argo rollouts get rollout rollouts-demo
 Access the application
 
 ```
-kubectl port-forward
+kubectl port-forward service/ingress-nginx-controller -n ingress-nginx 8080:80
 ```
 
 Update the image
