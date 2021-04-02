@@ -44,7 +44,7 @@ spec:
         volumeMounts:
         - mountPath: /etc/grafana
           name: grafana-config
-        - mountPath: /etc/grafana/provisioning
+        - mountPath: /etc/grafana/provisioning/datasources
           name: grafana-configds
         - mountPath: /etc/grafana/provisioning/dashboards
           name: grafana-configdsh
@@ -81,9 +81,8 @@ status:
 ---
 apiVersion: v1
 data:
-  grafana.ini: |-
-    [server]
-    root_url = %(protocol)s://%(domain)s/web/grafana
+  grafana.ini: |2-
+
     [paths]
     provisioning = /etc/grafana/provisioning
     data = /var/lib/grafana
@@ -93,7 +92,7 @@ data:
     [auth.anonymous]
     # enable anonymous access
     enabled = true
-    org_role = admin
+    org_role = Admin
     [analytics]
     reporting_enabled = false
     check_for_updates = false
@@ -112,11 +111,6 @@ apiVersion: v1
 data:
   datasource.yml: |
     apiVersion: 1
-
-    # list of datasources that should be deleted from the database
-    deleteDatasources:
-      - name: Prometheus
-        orgId: 1
 
     datasources:
     - name: Prometheus
@@ -139,7 +133,7 @@ data:
     apiVersion: 1
 
     providers:
-    - name: 'Prometheus'
+    - name: 'Demo'
       orgId: 1
       folder: ''
       type: file
@@ -147,6 +141,10 @@ data:
       editable: true
       options:
         path: /etc/grafana/provisioning/dashboards
+  demo.json: "{\"annotations\":{\"list\":[{\"builtIn\":1,\"datasource\":\"-- Grafana
+    --\",\"enable\":true,\"hide\":true,\"iconColor\":\"rgba(0, 211, 255, 1)\",\"name\":\"Annotations
+    & Alerts\",\"type\":\"dashboard\"}]},\"editable\":true,\"gnetId\":null,\"graphTooltip\":0,\"id\":1,\"links\":[],\"panels\":[{\"aliasColors\":{},\"bars\":false,\"dashLength\":10,\"dashes\":false,\"datasource\":null,\"fieldConfig\":{\"defaults\":{},\"overrides\":[]},\"fill\":1,\"fillGradient\":0,\"gridPos\":{\"h\":17,\"w\":24,\"x\":0,\"y\":0},\"hiddenSeries\":false,\"id\":2,\"legend\":{\"avg\":false,\"current\":false,\"max\":false,\"min\":false,\"show\":true,\"total\":false,\"values\":false},\"lines\":true,\"linewidth\":1,\"nullPointMode\":\"null\",\"options\":{\"alertThreshold\":false},\"percentage\":false,\"pluginVersion\":\"7.5.2\",\"pointradius\":2,\"points\":true,\"renderer\":\"flot\",\"seriesOverrides\":[],\"spaceLength\":10,\"stack\":false,\"steppedLine\":false,\"targets\":[{\"exemplar\":true,\"expr\":\"up{pod!=\\\"\\\"}\",\"interval\":\"\",\"legendFormat\":\"\",\"refId\":\"A\"}],\"thresholds\":[],\"timeFrom\":null,\"timeRegions\":[],\"timeShift\":null,\"title\":\"Pods\",\"tooltip\":{\"shared\":true,\"sort\":1,\"value_type\":\"individual\"},\"type\":\"graph\",\"xaxis\":{\"buckets\":null,\"mode\":\"time\",\"name\":null,\"show\":true,\"values\":[]},\"yaxes\":[{\"format\":\"short\",\"label\":null,\"logBase\":1,\"max\":null,\"min\":null,\"show\":true},{\"format\":\"short\",\"label\":null,\"logBase\":1,\"max\":null,\"min\":null,\"show\":true}],\"yaxis\":{\"align\":false,\"alignLevel\":null}},{\"aliasColors\":{},\"bars\":false,\"dashLength\":10,\"dashes\":false,\"datasource\":null,\"fieldConfig\":{\"defaults\":{},\"overrides\":[]},\"fill\":1,\"fillGradient\":0,\"gridPos\":{\"h\":8,\"w\":12,\"x\":0,\"y\":17},\"hiddenSeries\":false,\"id\":4,\"legend\":{\"avg\":false,\"current\":false,\"max\":false,\"min\":false,\"show\":true,\"total\":false,\"values\":false},\"lines\":true,\"linewidth\":1,\"nullPointMode\":\"null\",\"options\":{\"alertThreshold\":true},\"percentage\":false,\"pluginVersion\":\"7.5.2\",\"pointradius\":2,\"points\":false,\"renderer\":\"flot\",\"seriesOverrides\":[],\"spaceLength\":10,\"stack\":false,\"steppedLine\":false,\"targets\":[{\"exemplar\":true,\"expr\":\"rollout_info\",\"interval\":\"\",\"legendFormat\":\"\",\"refId\":\"A\"}],\"thresholds\":[],\"timeFrom\":null,\"timeRegions\":[],\"timeShift\":null,\"title\":\"Rollouts\",\"tooltip\":{\"shared\":true,\"sort\":0,\"value_type\":\"individual\"},\"type\":\"graph\",\"xaxis\":{\"buckets\":null,\"mode\":\"time\",\"name\":null,\"show\":true,\"values\":[]},\"yaxes\":[{\"format\":\"short\",\"label\":null,\"logBase\":1,\"max\":null,\"min\":null,\"show\":true},{\"format\":\"short\",\"label\":null,\"logBase\":1,\"max\":null,\"min\":null,\"show\":true}],\"yaxis\":{\"align\":false,\"alignLevel\":null}}],\"schemaVersion\":27,\"style\":\"dark\",\"tags\":[],\"templating\":{\"list\":[]},\"time\":{\"from\":\"now-6h\",\"to\":\"now\"},\"timepicker\":{},\"timezone\":\"\",\"title\":\"Demo
+    \U0001F525\U0001F525\U0001F525\",\"uid\":\"iyh2Zp_Mk\",\"version\":1}"
 kind: ConfigMap
 metadata:
   creationTimestamp: null

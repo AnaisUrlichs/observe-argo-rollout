@@ -180,6 +180,9 @@ func getGrafana(promURL string, name string) (appsv1.Deployment, corev1.Service,
 	)
 
 	var (
+		// Grafana has those harcoded or something...
+		// https://grafana.com/tutorials/provision-dashboards-and-data-sources/
+		datVolumeMount  = filepath.Join(configVolumeMount, "provisioning", "datasources")
 		dashVolumeMount = filepath.Join(configVolumeMount, "provisioning", "dashboards")
 	)
 
@@ -190,8 +193,7 @@ func getGrafana(promURL string, name string) (appsv1.Deployment, corev1.Service,
 		},
 		VolumeMount: corev1.VolumeMount{Name: configVolumeName, MountPath: configVolumeMount},
 		Data: map[string]string{
-			"grafana.ini": `[server]
-root_url = %(protocol)s://%(domain)s/web/grafana
+			"grafana.ini": `
 [paths]
 provisioning = /etc/grafana/provisioning
 data = /var/lib/grafana
@@ -201,7 +203,7 @@ enabled = false
 [auth.anonymous]
 # enable anonymous access
 enabled = true
-org_role = admin
+org_role = Admin
 [analytics]
 reporting_enabled = false
 check_for_updates = false
@@ -217,14 +219,9 @@ allow_embedding = true`,
 			Name:   configVolumeName + "ds",
 			Labels: map[string]string{selectorName: name},
 		},
-		VolumeMount: corev1.VolumeMount{Name: configVolumeName + "ds", MountPath: filepath.Join(configVolumeMount, "provisioning")},
+		VolumeMount: corev1.VolumeMount{Name: configVolumeName + "ds", MountPath: datVolumeMount},
 		Data: map[string]string{
 			"datasource.yml": `apiVersion: 1
-
-# list of datasources that should be deleted from the database
-deleteDatasources:
-  - name: Prometheus
-    orgId: 1
 
 datasources:
 - name: Prometheus
@@ -248,7 +245,7 @@ datasources:
 			"dashboard.yml": `apiVersion: 1
 
 providers:
-- name: 'Prometheus'
+- name: 'Demo'
   orgId: 1
   folder: ''
   type: file
@@ -257,6 +254,7 @@ providers:
   options:
     path: /etc/grafana/provisioning/dashboards
 `,
+			"demo.json": demoDashboard(),
 		},
 	}
 
