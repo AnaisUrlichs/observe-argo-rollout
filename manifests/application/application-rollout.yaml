@@ -3,11 +3,14 @@ kind: Rollout
 metadata:
   name: rollouts-demo
 spec:
-  replicas: 5
+  replicas: 1
   strategy:
     canary:
       canaryService: rollouts-demo-canary
       stableService: rollouts-demo-stable
+      trafficRouting:
+        nginx:
+          stableIngress: rollouts-demo-stable
       analysis:
         templates:
         - templateName: success-rate
