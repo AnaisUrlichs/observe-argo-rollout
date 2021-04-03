@@ -2,20 +2,29 @@
 
 Demo for _Automating and Monitoring Kubernetes Rollouts with Argo and Prometheus_
 
-Install Argo Rollouts 
+## Performing Demo 
 
-```
-kubectl create namespace argo-rollouts
-kubectl apply -n argo-rollouts -f https://raw.githubusercontent.com/argoproj/argo-rollouts/stable/manifests/install.yaml
-```
+1. Deploy Kubernetes (tested with 1.18)
 
-Install kubectl plugin
+1. Install argo [rollout kubectl plugin](https://argoproj.github.io/argo-rollouts/installation/#kubectl-plugin-installation)
 
 ```
 curl -LO https://github.com/argoproj/argo-rollouts/releases/latest/download/kubectl-argo-rollouts-linux-amd64
 chmod +x ./kubectl-argo-rollouts-linux-amd64
 sudo mv ./kubectl-argo-rollouts-linux-amd64 /usr/local/bin/kubectl-argo-rollouts
 ```
+
+1. Run bash ./demo.sh
+1. Run commands one by one or the one you want using keyboard keys:
+ * `enter`: execute command, `enter` again to reveal another command.
+ * `q`: quit  
+ * `p`: previous command
+ * `n`: next command
+ * `b`: start from beginning 
+ * `n`: start from end 
+
+
+## Draft
 
 test argo rollout version
 

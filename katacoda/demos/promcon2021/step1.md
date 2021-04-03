@@ -8,6 +8,10 @@
 
 ### Start up
 
-`./setup.sh`{{execute}}
+`bash ./setup.sh`{{execute}}
 
+
+[Prometheus](https://[[HOST_SUBDOMAIN]]-30555-[[KATACODA_HOST]].environments.katacoda.com/)
+
+[Grafana](https://[[HOST_SUBDOMAIN]]-30556-[[KATACODA_HOST]].environments.katacoda.com/)
 
