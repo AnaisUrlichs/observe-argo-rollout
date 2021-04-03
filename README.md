@@ -2,78 +2,74 @@
 
 Demo for _Automating and Monitoring Kubernetes Rollouts with Argo and Prometheus_
 
-Create your kind cluster with the ports configured for Ingress
+## Performing Demo 
+
+1. Deploy Kubernetes (tested with 1.18)
+
+1. Install argo [rollout kubectl plugin](https://argoproj.github.io/argo-rollouts/installation/#kubectl-plugin-installation)
 
 ```
-cd mandifests/argo-rollouts
-
-kind create cluster --config kind-cluster.yaml --name demo
+curl -LO https://github.com/argoproj/argo-rollouts/releases/latest/download/kubectl-argo-rollouts-linux-amd64
+chmod +x ./kubectl-argo-rollouts-linux-amd64
+sudo mv ./kubectl-argo-rollouts-linux-amd64 /usr/local/bin/kubectl-argo-rollouts
 ```
 
-Install the Prometheus Operator
+1. Run bash ./demo.sh
+1. Run commands one by one or the one you want using keyboard keys:
+ * `enter`: execute command, `enter` again to reveal another command.
+ * `q`: quit  
+ * `p`: previous command
+ * `n`: next command
+ * `b`: start from beginning 
+ * `n`: start from end 
+
+
+## Draft
+
+test argo rollout version
 
 ```
-helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
-
-helm repo update
-
-helm install prom prometheus-community/kube-prometheus-stack
+kubectl argo rollouts version
 ```
 
-Install Argo Rollouts to your local cluster
+have istioctl installed and install istio
 
 ```
-kubectl create namespace argo-rollouts
-kubectl apply -n argo-rollouts -f https://raw.githubusercontent.com/argoproj/argo-rollouts/stable/manifests/install.yaml
+istioctl install --set profile=demo
 ```
 
-Install the Ingress Controller
+```
+kubectl get all -n istio-system
+```
+
+Install prometheus add on
 
 ```
-kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/master/deploy/static/provider/kind/deploy.yaml
+kubectl apply -f https://raw.githubusercontent.com/istio/istio/release-1.9/samples/addons/prometheus.yaml
 ```
+
+Open prometheus dashboard
+
+```
+istioctl dashboard prometheus
+```
+
+This will not show anything since nothing is installed yet.
 
 Installing the different resources to configure the application — within manifests/application
 
 ```
-cd ..
-cd application
-
-kubectl apply -f services.yaml
-kubectl apply -f analysis-template.yaml
-kubectl apply -f ingress.yaml
-kubectl apply -f application-rollout.yaml
+cd manifests/application
+kubectl apply -f ./
 ```
 
-Note that you have to apply the application rollout after you apply the services; otherwise, it will go look for the services and not find it ⇒ the rollout will crash.
-
-Make sure the rollout has happened correctly
+Now have a look at the rollout 
 
 ```
 kubectl argo rollouts get rollout rollouts-demo
 ```
 
-Access the application
-
+Now deploy a new app version that will trigger the canary deployment
 ```
-kubectl port-forward service/ingress-nginx-controller -n ingress-nginx 8080:80
-```
-
-Update the image
-
-```
-kubectl argo rollouts set image rollouts-demo \
-  rollouts-demo=argoproj/rollouts-demo:yellow
-```
-
-Access the Prometheus port
-
-```
-kubectl port-forward service/prom-kube-prometheus-stack-prometheus 9090
-```
-
-Access the App
-
-```
-kubectl port-forward service/rollouts-demo-stable 8080:80
+kubectl argo rollouts set image rollouts-demo rollouts-demo=argoproj/rollouts-demo:yellow
 ```

@@ -14434,23 +14434,6 @@ subjects:
     name: argo-rollouts
     namespace: argo-rollouts
 ---
-apiVersion: v1
-kind: Service
-metadata:
-  labels:
-    app.kubernetes.io/component: server
-    app.kubernetes.io/name: argo-rollouts-metrics
-    app.kubernetes.io/part-of: argo-rollouts
-  name: argo-rollouts-metrics
-spec:
-  ports:
-    - name: metrics
-      port: 8090
-      protocol: TCP
-      targetPort: 8090
-  selector:
-    app.kubernetes.io/name: argo-rollouts
----
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -14474,6 +14457,9 @@ spec:
         - image: argoproj/argo-rollouts:v0.10.2
           imagePullPolicy: Always
           name: argo-rollouts
+          ports:
+            - name: m-http
+              containerPort: 8090
       securityContext:
         runAsNonRoot: true
       serviceAccountName: argo-rollouts

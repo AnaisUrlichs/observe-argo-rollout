@@ -1,5 +1,5 @@
 {
-  "title": "Automating and Monitoring Kubernetes Rollouts with Argo and Prometheus; v0.1.2",
+  "title": "Automating and Monitoring Kubernetes Rollouts with Argo and Prometheus; v0.1.4",
   "description": "Introduction, Tips and Advanced Tutorials for the CNCF things \uD83E\uDD17",
   "icon": "fa-prometheus",
   "courses": [
