@@ -40,5 +40,19 @@ r "kubectl apply -n ${NAMESPACE} -f manifests/generated/monitoring"
 
 r "kubectl get -n ${NAMESPACE} po"
 
+p "# Apply Rollout Manifests"
+r "kubectl apply -f manifests/application/services.yaml"
+r "kubectl apply -f manifests/application/analysis-template.yaml"
+r "kubectl apply -f manifests/application/application-rollout.yaml"
+
+p "# Ensure initial Rollout happened correctly"
+r "kubectl argo rollouts get rollout rollouts-demo"
+
+p "# Create some traffic"
+p "# tbd"
+
+p "# Update deployed image"
+r "kubectl argo rollouts set image rollouts-demo rollouts-demo=anaisurlichs/ping-pong:3.0"
+
 # Last entry to run navigation mode.
 navigate

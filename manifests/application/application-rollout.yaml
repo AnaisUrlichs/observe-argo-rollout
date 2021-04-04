@@ -3,21 +3,16 @@ kind: Rollout
 metadata:
   name: rollouts-demo
 spec:
-  replicas: 1
+  replicas: 5
   strategy:
     canary:
-      canaryService: rollouts-demo-canary
-      stableService: rollouts-demo-stable
-      trafficRouting:
-        nginx:
-          stableIngress: rollouts-demo-stable
       analysis:
         templates:
         - templateName: success-rate
         startingStep: 2 # delay starting analysis run until setWeight: 40%
         args:
-        - name: rollouts-demo-canary
-          value: rollouts-demo-canary.default.svc.cluster.local
+        - name: rollouts-demo
+          value: rollouts-demo.default.svc.cluster.local
       steps:
       - setWeight: 20
       - pause: {duration: 60s}
@@ -38,7 +33,7 @@ spec:
     spec:
       containers:
       - name: rollouts-demo
-        image: argoproj/rollouts-demo:blue
+        image: anaisurlichs/ping-pong:2.0
         ports:
         - name: http
           containerPort: 8080
