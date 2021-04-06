@@ -1,15 +1,20 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
-	"net/http"
-    "time"
+	"log"
 	"math"
 	"math/rand"
-	
-	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"net/http"
+	"syscall"
+	"time"
+
+	"github.com/oklog/run"
+	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 var (
@@ -48,12 +53,12 @@ func init() {
 }
 
 func getIPAddress(r *http.Request) string {
-  ipAddress := r.RemoteAddr
+	ipAddress := r.RemoteAddr
 	fwdAddress := r.Header.Get("X-Forwarded-For")
 	if fwdAddress != "" {
 		ipAddress = fwdAddress
 	}
-  return ipAddress
+	return ipAddress
 }
 
 func handlerPing(w http.ResponseWriter, r *http.Request) {
@@ -104,19 +109,33 @@ func main() {
 		}
 	}()
 
-	http.Handle("/metrics", promhttp.HandlerFor(
+	m := http.NewServeMux()
+	m.Handle("/metrics", promhttp.HandlerFor(
 		prometheus.DefaultGatherer,
 		promhttp.HandlerOpts{
 			// Opt into OpenMetrics to support exemplars.
 			EnableOpenMetrics: true,
 		},
 	))
-	http.HandleFunc("/ping", handlerPing)
+	m.HandleFunc("/ping", handlerPing)
+	srv := http.Server{Addr: *addr, Handler: m}
 
-	fmt.Println("ping listening on localhost:8080")
-	err := http.ListenAndServe(":8080", nil)
-
-	if err != nil {
-		fmt.Println("Error starting web server: ", err)
+	// Setup multiple 2 jobs. One is for serving HTTP requests, second to listen for Linux signals like Ctrl+C.
+	g := &run.Group{}
+	g.Add(func() error {
+		fmt.Println("ping listening on localhost:8080")
+		if err := srv.ListenAndServe(); err != nil {
+			return errors.Wrap(err, "starting web server")
+		}
+		return nil
+	}, func(error) {
+		if err := srv.Close(); err != nil {
+			fmt.Println("Failed to stop web server:", err)
+		}
+	})
+	g.Add(run.SignalHandler(context.Background(), syscall.SIGINT, syscall.SIGTERM))
+	if err := g.Run(); err != nil {
+		// Use %+v for github.com/pkg/errors error to print with stack.
+		log.Fatalf("Error: %+v", errors.Wrapf(err, "%s failed", flag.Arg(0)))
 	}
 }
