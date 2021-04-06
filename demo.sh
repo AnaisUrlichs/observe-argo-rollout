@@ -46,13 +46,16 @@ r "kubectl apply -f manifests/application/analysis-template.yaml"
 r "kubectl apply -f manifests/application/application-rollout.yaml"
 
 p "# Ensure initial Rollout happened correctly"
-r "kubectl argo rollouts get rollout rollouts-demo"
+r "kubectl argo rollouts -n ${NAMESPACE} get rollout rollouts-demo"
 
 p "# Create some traffic"
-p "# tbd"
+p "./app/call.sh"
 
 p "# Update deployed image"
 r "kubectl argo rollouts set image rollouts-demo rollouts-demo=anaisurlichs/ping-pong:3.0"
+
+p "# Ensure initial Rollout happened correctly"
+r "kubectl argo rollouts -n ${NAMESPACE} get rollout rollouts-demo"
 
 # Last entry to run navigation mode.
 navigate

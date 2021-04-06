@@ -46,7 +46,7 @@ kubectl argo rollouts version
 Install Prometheus and Grafana
 
 ```
-kubectl apply -f manifests/generated/monitoring -n demo   
+kubectl apply -n demo -f manifests/generated/monitoring
 ```
 
 Open Prometheus dashboard
@@ -61,18 +61,18 @@ Open prometheus dashboard
 
 Applying Rollout Service, Rollout, and Analysis Template
 ```
-kubectl apply -f manifests/application/services.yaml
-kubectl apply -f manifests/application/application-rollout.yaml
-kubectl apply -f manifests/application/analysis-template.yaml
+kubectl apply -n demo -f manifests/application/services.yaml
+kubectl apply -n demo -f manifests/application/application-rollout.yaml
+kubectl apply -n demo -f manifests/application/analysis-template.yaml
 ```
 
 Now have a look at the rollout 
 
 ```
-kubectl argo rollouts get rollout rollouts-demo
+kubectl argo rollouts -n demo get rollout rollouts-demo
 ```
 
 Now deploy a new app version that will trigger the canary deployment
 ```
-kubectl argo rollouts set image rollouts-demo rollouts-demo=anaisurlichs/ping-pong:3.0
+kubectl argo rollouts -n demo set image rollouts-demo rollouts-demo=anaisurlichs/ping-pong:3.0
 ```
