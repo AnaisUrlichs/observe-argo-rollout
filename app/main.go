@@ -3,10 +3,12 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"net/http"
     "time"
 	"math"
 	"math/rand"
+	"log"
 	
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/client_golang/prometheus"
@@ -57,8 +59,26 @@ func getIPAddress(r *http.Request) string {
 }
 
 func handlerPing(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte("pong"))
-	fmt.Println(time.Now(), getIPAddress(r), r.Method, r.RequestURI, r.UserAgent())
+	
+	requestBody, err := ioutil.ReadAll(r.Body)
+	n := rand.Intn(100)
+
+	select {
+		case <- time.After(500 * time.Millisecond):
+		if n <= 30 {
+			w.Write([]byte("pong"))
+			fmt.Println(time.Now(), getIPAddress(r), r.Method, r.RequestURI, r.UserAgent())
+		} else {
+			if err != nil {
+				w.WriteHeader(30)
+				log.Printf("%s: %v", string(requestBody), err.Error())
+				fmt.Fprintf(w, err.Error())
+				fmt.Println(time.Now(), getIPAddress(r), r.Method, r.RequestURI, r.UserAgent())
+			}
+			fmt.Println("Error returning response: ", err.Error())
+			return
+		}
+	}
 }
 
 func main() {
@@ -111,7 +131,10 @@ func main() {
 			EnableOpenMetrics: true,
 		},
 	))
+	
+
 	http.HandleFunc("/ping", handlerPing)
+	
 
 	fmt.Println("ping listening on localhost:8080")
 	err := http.ListenAndServe(":8080", nil)
