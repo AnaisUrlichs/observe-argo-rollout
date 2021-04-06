@@ -17,6 +17,9 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
+var lat int
+var prob int
+
 var (
 	addr              = flag.String("listen-address", ":8080", "The address to listen on for HTTP requests.")
 	uniformDomain     = flag.Float64("uniform.domain", 0.0002, "The domain for the uniform distribution.")
@@ -49,6 +52,8 @@ var (
 )
 
 func init() {
+	flag.IntVar(&lat, "lat", 0, "the latency of the response in milliseconds")
+	flag.IntVar(&prob, "prob", 100, "the probability of getting a response")
 	prometheus.MustRegister(rpcDurations, rpcDurationsHistogram, prometheus.NewBuildInfoCollector())
 }
 
@@ -62,8 +67,15 @@ func getIPAddress(r *http.Request) string {
 }
 
 func handlerPing(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte("pong"))
-	fmt.Println(time.Now(), getIPAddress(r), r.Method, r.RequestURI, r.UserAgent())
+	
+	n := rand.Intn(100)
+
+	<- time.After(time.Duration(lat) * time.Millisecond)
+	if n <= prob {
+		w.Write([]byte("pong"))
+	} else {
+		w.WriteHeader(500)
+	}
 }
 
 func main() {
