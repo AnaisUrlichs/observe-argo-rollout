@@ -1,25 +1,27 @@
 apiVersion: argoproj.io/v1alpha1
 kind: AnalysisTemplate
 metadata:
-  name: success-rate
+  name: prometheus-success-rate
 spec:
   args:
-  - name: rollouts-demo-canary
+  - name: job
+  - name: handler
   metrics:
   - name: success-rate
     interval: 30s
     count: 5
     # NOTE: prometheus queries return results in the form of a vector.
     # So it is common to access the index 0 of the returned array to obtain the value
-    successCondition: result[0] >= 0.95
+    successCondition: result[0] >= 0.80
+    # Describe what's this.
     failureLimit: 3
     provider:
       prometheus:
-        address: "prometheus.istio-system.svc.cluster.local:9090"
+        address: "prom.demo.svc.cluster.local:9090"
         query: |
           sum(irate(
-            istio_requests_total{reporter="source",destination_service=~"{{args.rollouts-demo-canary}}",response_code!~"5.*"}[5m]
+            http_requests_total{handler="{{args.handler}}",job=~"{{args.job}}",code!~"5.*"}[5m]
           )) / 
           sum(irate(
-            istio_requests_total{reporter="source",destination_service=~"{{args.rollouts-demo-canary}}"}[5m]
+            http_requests_total{handler="{{args.handler}}",job=~"{{args.job}}"}[5m]
           ))

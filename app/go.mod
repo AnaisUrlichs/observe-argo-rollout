@@ -1,6 +1,6 @@
 module github.com/AnaisUrlichs/observe-argo-rollout/app
 
-go 1.16
+go 1.15
 
 require (
 	github.com/HdrHistogram/hdrhistogram-go v1.1.0 // indirect

@@ -1,0 +1,5 @@
+FROM scratch
+COPY --from=anaisurlichs/ping-pong:latest /bin/app /bin/app
+COPY --from=anaisurlichs/ping-pong:latest /bin/pinger /bin/pinger
+
+CMD ["/bin/app", "-latency=90%500ms,10%200ms", "-success-prob=95"]

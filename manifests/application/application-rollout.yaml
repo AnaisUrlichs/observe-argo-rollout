@@ -1,18 +1,20 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Rollout
 metadata:
-  name: rollouts-demo
+  name: app
 spec:
   replicas: 5
   strategy:
     canary:
       analysis:
         templates:
-        - templateName: success-rate
-        startingStep: 2 # delay starting analysis run until setWeight: 40%
+        - templateName: prometheus-success-rate
+        startingStep: 1 # delay starting analysis run until setWeight: 20%
         args:
-        - name: rollouts-demo
-          value: rollouts-demo.default.svc.cluster.local
+        - name: job
+          value: app
+        - name: handler
+          value: ping
       steps:
       - setWeight: 20
       - pause: {duration: 60s}
@@ -25,20 +27,29 @@ spec:
   revisionHistoryLimit: 2
   selector:
     matchLabels:
-      app: rollouts-demo
+      app: app
   template:
     metadata:
       labels:
-        app: rollouts-demo
+        app: app
     spec:
       containers:
-      - name: rollouts-demo
-        image: anaisurlichs/ping-pong:2.0
+      - name: app
+        image: anaisurlichs/ping-pong:initial
         ports:
         - name: m-http
           containerPort: 8080
           protocol: TCP
-        resources:
-          requests:
-            memory: 32Mi
-            cpu: 5m
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: app
+spec:
+  ports:
+    - port: 8080
+      targetPort: m-http
+      protocol: TCP
+      name: m-http
+  selector:
+    app: app

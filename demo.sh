@@ -35,27 +35,41 @@ r "kubectl create namespace ${NAMESPACE}"
 p "# Install argo rollout controller with CRDs to ${NAMESPACE}"
 r "kubectl apply -n ${NAMESPACE} -f manifests/argo-rollouts"
 
-p "# Install Prometheus ${NAMESPACE}"
+p "# Install monitoring resources ${NAMESPACE}"
 r "kubectl apply -n ${NAMESPACE} -f manifests/generated/monitoring"
-
 r "kubectl get -n ${NAMESPACE} po"
 
-p "# Apply Rollout Manifests"
-r "kubectl apply -f manifests/application/services.yaml"
-r "kubectl apply -f manifests/application/analysis-template.yaml"
-r "kubectl apply -f manifests/application/application-rollout.yaml"
+# Cat/tail/head some part of deployment manifest to how things are configured?
+p "# Rollout anaisurlichs/ping-pong:initial"
+r "kubectl apply -n ${NAMESPACE} -f manifests/application"
 
 p "# Ensure initial Rollout happened correctly"
-r "kubectl argo rollouts -n ${NAMESPACE} get rollout rollouts-demo"
+r "kubectl argo rollouts -n ${NAMESPACE} get rollout app"
 
-p "# Create some traffic"
-p "./app/call.sh"
+p "# Start client 'pinger'"
+r "kubectl apply -n ${NAMESPACE} -f manifests/generated/pinger"
+r "kubectl get -n ${NAMESPACE} po"
 
-p "# Update deployed image"
-r "kubectl argo rollouts set image rollouts-demo rollouts-demo=anaisurlichs/ping-pong:3.0"
+p "# Rollout anaisurlichs/ping-pong:error"
+r "kubectl argo rollouts set image app app=anaisurlichs/ping-pong:error"
 
+# TODO(bwplotka): Wait?
 p "# Ensure initial Rollout happened correctly"
-r "kubectl argo rollouts -n ${NAMESPACE} get rollout rollouts-demo"
+r "kubectl argo rollouts -n ${NAMESPACE} get rollout app"
+
+p "# Rollout anaisurlichs/ping-pong:slow"
+r "kubectl argo rollouts set image app app=anaisurlichs/ping-pong:slow"
+
+# TODO(bwplotka): Wait?
+p "# Ensure initial Rollout happened correctly"
+r "kubectl argo rollouts -n ${NAMESPACE} get rollout app"
+
+p "# Rollout anaisurlichs/ping-pong:best"
+r "kubectl argo rollouts set image app app=anaisurlichs/ping-pong:best"
+
+# TODO(bwplotka): Wait?
+p "# Ensure initial Rollout happened correctly"
+r "kubectl argo rollouts -n ${NAMESPACE} get rollout app"
 
 # Last entry to run navigation mode.
 navigate

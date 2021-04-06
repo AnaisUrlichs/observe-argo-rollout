@@ -36,14 +36,22 @@ func main() {
 	// Make sure to generate at the very end.
 	defer generator.Generate()
 
-	generator = generator.With("monitoring")
+	{
+		g := generator.With("monitoring")
 
-	promSet, promSrv, promConfigAndMount := getPrometheus("prom")
+		promSet, promSrv, promConfigAndMount := getPrometheus("prom")
 
-	generator.Add("prom.yaml", encoding.GhodssYAML(promSet, promSrv, promConfigAndMount))
-	generator.Add("grafana.yaml", encoding.GhodssYAML(
-		getGrafana(fmt.Sprintf("%s.%s.svc.cluster.local:%d", promSrv.Name, namespace, promSrv.Spec.Ports[0].Port), "grafana")),
-	)
+		g.Add("prom.yaml", encoding.GhodssYAML(promSet, promSrv, promConfigAndMount))
+		g.Add("grafana.yaml", encoding.GhodssYAML(
+			getGrafana(fmt.Sprintf("%s.%s.svc.cluster.local:%d", promSrv.Name, namespace, promSrv.Spec.Ports[0].Port), "grafana")),
+		)
+	}
+	{
+		g := generator.With("pinger")
+		g.Add("pinger.yaml", encoding.GhodssYAML(
+			getPinger(fmt.Sprintf("http://app.%s.svc.cluster.local:8080/ping", namespace), "pinger")),
+		)
+	}
 
 }
 
