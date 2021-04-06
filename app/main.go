@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"io/ioutil"
 	"flag"
 	"fmt"
 	"log"
@@ -69,22 +68,13 @@ func getIPAddress(r *http.Request) string {
 
 func handlerPing(w http.ResponseWriter, r *http.Request) {
 	
-	requestBody, err := ioutil.ReadAll(r.Body)
 	n := rand.Intn(100)
 
 	<- time.After(time.Duration(lat) * time.Millisecond)
 	if n <= prob {
 		w.Write([]byte("pong"))
-		fmt.Println(time.Now(), getIPAddress(r), r.Method, r.RequestURI, r.UserAgent())
 	} else {
-		if err != nil {
-			w.WriteHeader(30)
-			log.Printf("%s: %v", string(requestBody), err.Error())
-			fmt.Fprintf(w, err.Error())
-			fmt.Println(time.Now(), getIPAddress(r), r.Method, r.RequestURI, r.UserAgent())
-		}
-		fmt.Println("Error returning response: ", err.Error())
-		return
+		w.WriteHeader(500)
 	}
 }
 
