@@ -2,18 +2,9 @@ package main
 
 import (
 	"context"
+	"io/ioutil"
 	"flag"
 	"fmt"
-<<<<<<< HEAD
-	"io/ioutil"
-	"net/http"
-    "time"
-	"math"
-	"math/rand"
-	"log"
-	
-	"github.com/prometheus/client_golang/prometheus/promhttp"
-=======
 	"log"
 	"math"
 	"math/rand"
@@ -23,10 +14,12 @@ import (
 
 	"github.com/oklog/run"
 	"github.com/pkg/errors"
->>>>>>> 82d0580581be93163fb2312dc6bff6fa49520f0a
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
+
+var lat int
+var prob int
 
 var (
 	addr              = flag.String("listen-address", ":8080", "The address to listen on for HTTP requests.")
@@ -60,6 +53,8 @@ var (
 )
 
 func init() {
+	flag.IntVar(&lat, "lat", 0, "the latency of the response in milliseconds")
+	flag.IntVar(&prob, "prob", 100, "the probability of getting a response")
 	prometheus.MustRegister(rpcDurations, rpcDurationsHistogram, prometheus.NewBuildInfoCollector())
 }
 
@@ -77,21 +72,19 @@ func handlerPing(w http.ResponseWriter, r *http.Request) {
 	requestBody, err := ioutil.ReadAll(r.Body)
 	n := rand.Intn(100)
 
-	select {
-		case <- time.After(500 * time.Millisecond):
-		if n <= 30 {
-			w.Write([]byte("pong"))
+	<- time.After(time.Duration(lat) * time.Millisecond)
+	if n <= prob {
+		w.Write([]byte("pong"))
+		fmt.Println(time.Now(), getIPAddress(r), r.Method, r.RequestURI, r.UserAgent())
+	} else {
+		if err != nil {
+			w.WriteHeader(30)
+			log.Printf("%s: %v", string(requestBody), err.Error())
+			fmt.Fprintf(w, err.Error())
 			fmt.Println(time.Now(), getIPAddress(r), r.Method, r.RequestURI, r.UserAgent())
-		} else {
-			if err != nil {
-				w.WriteHeader(30)
-				log.Printf("%s: %v", string(requestBody), err.Error())
-				fmt.Fprintf(w, err.Error())
-				fmt.Println(time.Now(), getIPAddress(r), r.Method, r.RequestURI, r.UserAgent())
-			}
-			fmt.Println("Error returning response: ", err.Error())
-			return
 		}
+		fmt.Println("Error returning response: ", err.Error())
+		return
 	}
 }
 
@@ -146,15 +139,8 @@ func main() {
 			EnableOpenMetrics: true,
 		},
 	))
-<<<<<<< HEAD
-	
-
-	http.HandleFunc("/ping", handlerPing)
-	
-=======
 	m.HandleFunc("/ping", handlerPing)
 	srv := http.Server{Addr: *addr, Handler: m}
->>>>>>> 82d0580581be93163fb2312dc6bff6fa49520f0a
 
 	// Setup multiple 2 jobs. One is for serving HTTP requests, second to listen for Linux signals like Ctrl+C.
 	g := &run.Group{}
