@@ -23,3 +23,9 @@ $(GOIMPORTS): $(BINGO_DIR)/goimports.mod
 	@echo "(re)installing $(GOBIN)/goimports-v0.0.0-20210112230658-8b4aab62c064"
 	@cd $(BINGO_DIR) && $(GO) build -mod=mod -modfile=goimports.mod -o=$(GOBIN)/goimports-v0.0.0-20210112230658-8b4aab62c064 "golang.org/x/tools/cmd/goimports"
 
+REVIVE := $(GOBIN)/revive-v1.0.6
+$(REVIVE): $(BINGO_DIR)/revive.mod
+	@# Install binary/ries using Go 1.14+ build command. This is using bwplotka/bingo-controlled, separate go module with pinned dependencies.
+	@echo "(re)installing $(GOBIN)/revive-v1.0.6"
+	@cd $(BINGO_DIR) && $(GO) build -mod=mod -modfile=revive.mod -o=$(GOBIN)/revive-v1.0.6 "github.com/mgechev/revive"
+
