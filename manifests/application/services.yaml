@@ -5,8 +5,8 @@ metadata:
 spec:
   ports:
   - port: 8080
-    targetPort: http
+    targetPort: m-http
     protocol: TCP
-    name: http
+    name: m-http
   selector:
     app: rollouts-demo

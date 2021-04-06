@@ -35,7 +35,7 @@ spec:
       - name: rollouts-demo
         image: anaisurlichs/ping-pong:2.0
         ports:
-        - name: http
+        - name: m-http
           containerPort: 8080
           protocol: TCP
         resources:
