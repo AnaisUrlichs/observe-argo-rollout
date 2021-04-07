@@ -1,5 +1,7 @@
 include .bingo/Variables.mk
-FILES_TO_FMT      ?= $(shell find . -path ./vendor -prune -o -name '*.go' -print)
+
+FILES_TO_FMT ?= $(shell find . -path ./vendor -prune -o -name '*.go' -print)
+DOCKER_IMAGE ?= anaisurlichs/ping-pong
 
 define require_clean_work_tree
 	@git update-index -q --ignore-submodules --refresh
@@ -32,7 +34,20 @@ build:
 
 .PHONY: docker
 docker:
-	@cd app && docker build .
+	@cd app && docker build -t $(DOCKER_IMAGE):latest .
+	@cd app && docker build -t $(DOCKER_IMAGE):best -f Dockerfile.best .
+	@cd app && docker build -t $(DOCKER_IMAGE):errors -f Dockerfile.errors .
+	@cd app && docker build -t $(DOCKER_IMAGE):initial -f Dockerfile.initial .
+	@cd app && docker build -t $(DOCKER_IMAGE):slow -f Dockerfile.slow .
+
+
+.PHONY: docker-push
+docker-push: docker
+	@docker push $(DOCKER_IMAGE):latest
+	@docker push $(DOCKER_IMAGE):best
+	@docker push $(DOCKER_IMAGE):errors
+	@docker push $(DOCKER_IMAGE):initial
+	@docker push $(DOCKER_IMAGE):slow
 
 .PHONY: format
 format: ## Formats Go code including imports and cleans up white noise.
@@ -47,8 +62,9 @@ gen:
 .PHONY: lint
 lint: ## Runs various static analysis against our code.
 lint: $(REVIVE) format
+	$(call require_clean_work_tree,"run 'make lint' file and commit changes.")
 	@echo ">> examining all of the Go files"
 	@cd app && go vet -stdmethods=false ./...
 	@echo ">> linting all of the Go files GOGC=${GOGC}"
 	@cd app && $(REVIVE) -config .revive.toml -formatter stylish ./...
-	$(call require_clean_work_tree,"detected white noise or/and files without copyright; run 'make lint' file and commit changes.")
+	$(call require_clean_work_tree,"run 'make lint' file and commit changes.")

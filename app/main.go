@@ -7,6 +7,9 @@ import (
 	"log"
 	"math/rand"
 	"net/http"
+	"sort"
+	"strconv"
+	"strings"
 	"syscall"
 	"time"
 
@@ -19,29 +22,86 @@ import (
 )
 
 var (
+	latDecider *latencyDecider
+
 	// TODO(bwplotka): Move those flags out of globals.
-	addr       = flag.String("listen-address", ":8080", "The address to listen on for HTTP requests.")
-	appVersion = flag.String("set-version", "first", "Injected version to be presented via metrics.")
-	lat        = flag.Int("lat", 0, "The latency of the response in milliseconds")
-	prob       = flag.Int("prob", 100, "The probability (in %) of getting a successful response")
+	addr        = flag.String("listen-address", ":8080", "The address to listen on for HTTP requests.")
+	appVersion  = flag.String("set-version", "first", "Injected version to be presented via metrics.")
+	lat         = flag.String("latency", "90%500ms,10%200ms", "Encoded latency and probability of the response in format as: <probability>%<duration>,<probability>%<duration>....")
+	successProb = flag.Float64("success-prob", 100, "The probability (in %) of getting a successful response")
 )
 
-func handlerPing(w http.ResponseWriter, r *http.Request) {
-	n := rand.Intn(100)
+type latencyDecider struct {
+	latencies   []time.Duration
+	probability []float64 // Sorted ascending.
+}
 
-	<-time.After(time.Duration(*lat) * time.Millisecond)
-	if n <= *prob {
-		w.Write([]byte("pong"))
-	} else {
-		w.WriteHeader(500)
+func newLatencyDecider(encodedLatencies string) (*latencyDecider, error) {
+	l := latencyDecider{}
+
+	s := strings.Split(encodedLatencies, ",")
+	// Be smart, sort while those are encoded, so they are sorted by probability number.
+	sort.Strings(s)
+
+	cumulativeProb := 0.0
+	for _, e := range s {
+		entry := strings.Split(e, "%")
+		if len(entry) != 2 {
+			return nil, errors.Errorf("invalid input %v", encodedLatencies)
+		}
+		f, err := strconv.ParseFloat(entry[0], 64)
+		if err != nil {
+			return nil, errors.Wrapf(err, "parse probabilty %v as float", entry[0])
+		}
+		cumulativeProb += f
+		l.probability = append(l.probability, f)
+
+		d, err := time.ParseDuration(entry[1])
+		if err != nil {
+			return nil, errors.Wrapf(err, "parse latency %v as duration", entry[1])
+		}
+		l.latencies = append(l.latencies, d)
+	}
+	if cumulativeProb != 100 {
+		return nil, errors.Errorf("overall probability has to equal 100. Parsed input equals to %v", cumulativeProb)
+	}
+	fmt.Println("Latency decider created:", l)
+	return &l, nil
+}
+
+func (l latencyDecider) AddLatency() {
+	n := rand.Float64() * 100
+
+	for i, p := range l.probability {
+		if n <= p {
+			<-time.After(l.latencies[i])
+			return
+		}
 	}
 }
 
+func handlerPing(w http.ResponseWriter, _ *http.Request) {
+	latDecider.AddLatency()
+
+	if rand.Float64()*100 <= *successProb {
+		w.WriteHeader(200)
+		_, _ = w.Write([]byte("pong"))
+		return
+	}
+	w.WriteHeader(500)
+}
+
 func main() {
+	var err error
 	flag.Parse()
 
+	latDecider, err = newLatencyDecider(*lat)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	version.Version = *appVersion
-	version.BuildUser = "Probably Anaïs"
+	version.BuildUser = "Anaïs"
 
 	reg := prometheus.NewRegistry()
 	reg.MustRegister(
