@@ -25,12 +25,15 @@ spec:
         - --storage.tsdb.path=/data
         - --web.enable-lifecycle
         - --web.enable-admin-api
+        - --enable-feature=promql-at-modifier
+        - --enable-feature=promql-negative-offset
+        - --enable-feature=exemplar-storage
         env:
         - name: HOSTNAME
           valueFrom:
             fieldRef:
               fieldPath: metadata.name
-        image: prom/prometheus:v2.26.0
+        image: bplotka/prometheus:2.26.0-exemplars-metrics
         imagePullPolicy: Always
         name: prometheus
         ports:
