@@ -8,7 +8,7 @@ spec:
     canary:
       analysis:
         templates:
-        - templateName: prometheus-success-rate
+        - templateName: low-error-low-latency
         startingStep: 1 # delay starting analysis run until setWeight: 20%
         args:
         - name: job

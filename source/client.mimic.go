@@ -35,7 +35,7 @@ func getPinger(endpoint string, name string) appsv1.Deployment {
 						Command:         []string{"/bin/pinger"},
 						Args: []string{
 							"-endpoint=" + endpoint,
-							fmt.Sprintf("-listen-address=%v", httpPort),
+							fmt.Sprintf("-listen-address=:%v", httpPort),
 							"-pings-per-second=10",
 						},
 						Ports: []corev1.ContainerPort{{Name: "m-http", ContainerPort: httpPort}},

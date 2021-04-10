@@ -362,7 +362,8 @@ func prometheusConfig() prometheus.Config {
 			ExternalLabels: map[model.LabelName]model.LabelValue{
 				"cluster": "demo",
 			},
-			ScrapeInterval: model.Duration(15 * time.Second),
+			// For demo purposes do scrapes much more often. Normally 15s is ok.
+			ScrapeInterval: model.Duration(5 * time.Second),
 		},
 		ScrapeConfigs: []*prometheus.ScrapeConfig{
 			{

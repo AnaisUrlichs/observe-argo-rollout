@@ -1,27 +1,34 @@
 apiVersion: argoproj.io/v1alpha1
 kind: AnalysisTemplate
 metadata:
-  name: prometheus-success-rate
+  name: low-error-low-latency
 spec:
   args:
   - name: job
   - name: handler
   metrics:
-  - name: success-rate
-    interval: 30s
-    count: 5
-    # NOTE: prometheus queries return results in the form of a vector.
-    # So it is common to access the index 0 of the returned array to obtain the value
-    successCondition: result[0] >= 0.80
-    # Describe what's this.
-    failureLimit: 3
+  - name: lower-than-20p-error-rate
+    interval: 1m
+    # TODO(bwplotka): Ideally this value is based on your SLO error budget.
+    successCondition: result[0] > 0.80
+    provider:
+      prometheus:
+        address: "prom.demo.svc.cluster.local:9090"
+        # TODO(bwplotka): Normally do irate over larger period of times like minute. For demo purposes
+        # we set scrape interval to 5s, so we are safe to do irate over 20s (e.g for 15s scrape, do at least 1m).
+        query: |
+          sum(irate(
+            http_requests_total{handler="{{args.handler}}",job=~"{{args.job}}",code!~"5.*"}[20s]
+          )) /
+          sum(irate(
+            http_requests_total{handler="{{args.handler}}",job=~"{{args.job}}"}[20s]
+          ))
+  - name: latency-90p-lower-than-1s
+    interval: 1m
+    # TODO(bwplotka): Ideally this value is based on your SLO latency budget. Lets assume 1s is too slow for 0.9 percentile.
+    successCondition: result[0] < 1.0
     provider:
       prometheus:
         address: "prom.demo.svc.cluster.local:9090"
         query: |
-          sum(irate(
-            http_requests_total{handler="{{args.handler}}",job=~"{{args.job}}",code!~"5.*"}[5m]
-          )) / 
-          sum(irate(
-            http_requests_total{handler="{{args.handler}}",job=~"{{args.job}}"}[5m]
-          ))
+          histogram_quantile(0.9, sum(irate(http_request_duration_seconds_bucket{handler="{{args.handler}}",job=~"{{args.job}}"}[20s])) by (le))
