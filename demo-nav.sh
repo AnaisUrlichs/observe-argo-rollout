@@ -8,7 +8,7 @@
 # TYPE_SPEED=40
 #
 # If empty next command will be shown only after enter (Default: false).
-IMMEDIATE_REVEAL=false
+# IMMEDIATE_REVEAL=false
 #
 # If true prefix line with number; easier to navigate (Default: false).
 # NUMS=true

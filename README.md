@@ -14,6 +14,15 @@ chmod +x ./kubectl-argo-rollouts-linux-amd64
 sudo mv ./kubectl-argo-rollouts-linux-amd64 /usr/local/bin/kubectl-argo-rollouts
 ```
 
+1. Install bat:
+
+```
+curl -LO https://github.com/sharkdp/bat/releases/download/v0.18.0/bat-v0.18.0-x86_64-unknown-linux-gnu.tar.gz
+tar -xzf bat-v0.18.0-x86_64-unknown-linux-gnu.tar.gz
+chmod +x ./bat-v0.18.0-x86_64-unknown-linux-gnu/bat
+sudo mv ./bat-v0.18.0-x86_64-unknown-linux-gnu/bat /usr/local/bin/bat
+```
+
 1. Run bash ./demo.sh
 1. Run commands one by one or the one you want using keyboard keys:
  * `enter`: execute command, `enter` again to reveal another command.

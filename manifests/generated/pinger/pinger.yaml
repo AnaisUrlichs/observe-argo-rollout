@@ -20,7 +20,7 @@ spec:
       containers:
       - args:
         - -endpoint=http://app.demo.svc.cluster.local:8080/ping
-        - -listen-address=80
+        - -listen-address=:80
         - -pings-per-second=10
         command:
         - /bin/pinger
