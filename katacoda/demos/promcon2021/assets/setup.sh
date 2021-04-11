@@ -17,7 +17,7 @@ sudo mv ./bat-v0.18.0-x86_64-unknown-linux-gnu/bat /usr/local/bin/bat
 launch.sh
 
 cd /root
-git clone https://github.com/bwplotka/observe-argo-rollout.git /root/demo
+git clone https://github.com/AnaisUrlichs/observe-argo-rollout.git /root/demo
 cd /root/demo
 
 bash demo.sh
