@@ -17,13 +17,13 @@ spec:
           value: ping
       steps:
       - setWeight: 20
-      - pause: {duration: 60s}
+      - pause: {duration: 40s}
       - setWeight: 40
-      - pause: {duration: 60s}
+      - pause: {duration: 40s}
       - setWeight: 60
-      - pause: {duration: 60s}
+      - pause: {duration: 40s}
       - setWeight: 80
-      - pause: {duration: 60s}
+      - pause: {duration: 40s}
   revisionHistoryLimit: 2
   selector:
     matchLabels:

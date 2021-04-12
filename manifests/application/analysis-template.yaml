@@ -8,7 +8,7 @@ spec:
   - name: handler
   metrics:
   - name: lower-than-20p-error-rate
-    interval: 1m
+    interval: 40s
     # TODO(bwplotka): Ideally this value is based on your SLO error budget.
     successCondition: result[0] > 0.80
     provider:
@@ -24,7 +24,7 @@ spec:
             http_requests_total{handler="{{args.handler}}",job=~"{{args.job}}"}[20s]
           ))
   - name: latency-90p-lower-than-1s
-    interval: 1m
+    interval: 40s
     # TODO(bwplotka): Ideally this value is based on your SLO latency budget. Lets assume 1s is too slow for 0.9 percentile.
     successCondition: result[0] < 1.0
     provider:
