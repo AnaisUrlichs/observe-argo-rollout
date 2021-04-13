@@ -8,11 +8,14 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"os"
 	"sync"
 	"syscall"
 	"time"
 
-	"github.com/AnaisUrlichs/observe-argo-rollout/app/extpromhttp"
+	"github.com/AnaisUrlichs/observe-argo-rollout/app/exthttp"
+	"github.com/AnaisUrlichs/observe-argo-rollout/app/tracing"
+	"github.com/efficientgo/tools/core/pkg/errcapture"
 	"github.com/oklog/run"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
@@ -20,23 +23,53 @@ import (
 )
 
 var (
-	addr        = flag.String("listen-address", ":8080", "The address to listen on for HTTP requests.")
-	endpoint    = flag.String("endpoint", "http://ponger.demo.svc.cluster.local:8080/ping", "The address of pong app we can connect to and send requests.")
-	pingsPerSec = flag.Int("pings-per-second", 10, "How many pings per second we should request")
+	// TODO(bwplotka): Move those flags out of globals.
+	addr               = flag.String("listen-address", ":8080", "The address to listen on for HTTP requests.")
+	endpoint           = flag.String("endpoint", "http://app.demo.svc.cluster.local:8080/ping", "The address of pong app we can connect to and send requests.")
+	pingsPerSec        = flag.Int("pings-per-second", 10, "How many pings per second we should request")
+	traceEndpoint      = flag.String("trace-endpoint", "tempo.demo.svc.cluster.local:9091", "The gRPC OTLP endpoint for tracing backend. Hack: Set it to 'stdout' to print traces to the output instead")
+	traceSamplingRatio = flag.Float64("trace-sampling-ratio", 1.0, "Sampling ratio")
 )
 
 func main() {
 	flag.Parse()
+	if err := runMain(); err != nil {
+		// Use %+v for github.com/pkg/errors error to print with stack.
+		log.Fatalf("Error: %+v", errors.Wrapf(err, "%s", flag.Arg(0)))
+	}
+}
 
+func runMain() (err error) {
 	reg := prometheus.NewRegistry()
 	reg.MustRegister(
 		prometheus.NewGoCollector(),
 		prometheus.NewProcessCollector(prometheus.ProcessCollectorOpts{}),
 	)
 
-	instr := extpromhttp.NewInstrumentationMiddleware(reg, nil)
+	var tracingProvider *tracing.Provider
+	if *traceEndpoint != "" {
+		tOpts := []tracing.Option{tracing.WithSampler(tracing.TraceIDRatioBasedSampler(*traceSamplingRatio))}
+		switch *traceEndpoint {
+		case "stdout":
+			tOpts = append(tOpts, tracing.WithPrinter(os.Stdout))
+		default:
+			tOpts = append(tOpts, tracing.WithOTLP(
+				tracing.WithOTLPInsecure(),
+				tracing.WithOTLPEndpoint(*traceEndpoint),
+			))
+		}
+		tp, closeFn, err := tracing.NewProvider(tOpts...)
+		if err != nil {
+			return err
+		}
+		tracingProvider = tp
+		defer errcapture.Do(&err, closeFn, "close tracers")
+		fmt.Println("Tracing enabled", *traceEndpoint)
+	}
+
+	instr := exthttp.NewInstrumentationMiddleware(reg, nil, nil)
 	m := http.NewServeMux()
-	m.Handle("/metrics", instr.NewHandler("/metrics", promhttp.HandlerFor(
+	m.Handle("/metrics", instr.WrapHandler("/metrics", promhttp.HandlerFor(
 		reg,
 		promhttp.HandlerOpts{
 			// Opt into OpenMetrics to support exemplars.
@@ -47,6 +80,7 @@ func main() {
 
 	g := &run.Group{}
 	g.Add(func() error {
+		fmt.Println("HTTP Server listening on", *addr)
 		if err := srv.ListenAndServe(); err != nil {
 			return errors.Wrap(err, "starting web server")
 		}
@@ -57,8 +91,11 @@ func main() {
 		}
 	})
 	{
-		// Custom HTTP client with metrics instrumentation.
-		client := &http.Client{Transport: extpromhttp.NewInstrumentationTripperware(reg, nil).WrapRoundTripper("ping", http.DefaultTransport)}
+		client := &http.Client{
+			// Custom HTTP client with metrics and tracing instrumentation.
+			Transport: exthttp.NewInstrumentationTripperware(reg, nil, tracingProvider).
+				WrapRoundTripper("ping", http.DefaultTransport),
+		}
 
 		ctx, cancel := context.WithCancel(context.Background())
 		g.Add(func() error {
@@ -69,10 +106,7 @@ func main() {
 		})
 	}
 	g.Add(run.SignalHandler(context.Background(), syscall.SIGINT, syscall.SIGTERM))
-	if err := g.Run(); err != nil {
-		// Use %+v for github.com/pkg/errors error to print with stack.
-		log.Fatalf("Error: %+v", errors.Wrapf(err, "%s failed", flag.Arg(0)))
-	}
+	return g.Run()
 }
 
 func spamPings(ctx context.Context, client *http.Client, endpoint string, pingsPerSec int) {

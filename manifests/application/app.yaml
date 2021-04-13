@@ -2,6 +2,8 @@ apiVersion: argoproj.io/v1alpha1
 kind: Rollout
 metadata:
   name: app
+  labels:
+    app.kubernetes.io/name: app
 spec:
   replicas: 5
   strategy:
@@ -17,21 +19,21 @@ spec:
           value: ping
       steps:
       - setWeight: 20
-      - pause: {duration: 60s}
+      - pause: {duration: 30s}
       - setWeight: 40
-      - pause: {duration: 60s}
+      - pause: {duration: 30s}
       - setWeight: 60
-      - pause: {duration: 60s}
+      - pause: {duration: 30s}
       - setWeight: 80
-      - pause: {duration: 60s}
+      - pause: {duration: 30s}
   revisionHistoryLimit: 2
   selector:
     matchLabels:
-      app: app
+      app.kubernetes.io/name: app
   template:
     metadata:
       labels:
-        app: app
+        app.kubernetes.io/name: app
     spec:
       containers:
       - name: app
@@ -45,6 +47,8 @@ apiVersion: v1
 kind: Service
 metadata:
   name: app
+  labels:
+    app.kubernetes.io/name: app
 spec:
   ports:
     - port: 8080
@@ -52,4 +56,4 @@ spec:
       protocol: TCP
       name: m-http
   selector:
-    app: app
+    app.kubernetes.io/name: app

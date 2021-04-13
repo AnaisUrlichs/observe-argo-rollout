@@ -1,0 +1,117 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  creationTimestamp: null
+  labels:
+    app.kubernetes.io/name: tempo
+  name: tempo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: tempo
+  serviceName: tempo
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app.kubernetes.io/name: tempo
+    spec:
+      containers:
+      - args:
+        - -config.file=/etc/tempo/tempo.yaml
+        image: grafana/tempo:93c378a9
+        imagePullPolicy: Always
+        name: tempo
+        ports:
+        - containerPort: 9090
+          name: m-http
+        - containerPort: 9091
+          name: grpc
+        readinessProbe:
+          httpGet:
+            path: /metrics
+            port: 9090
+          successThreshold: 3
+        resources: {}
+        securityContext:
+          runAsNonRoot: false
+          runAsUser: 1000
+        volumeMounts:
+        - mountPath: /etc/tempo
+          name: tempo-config
+        - mountPath: /data
+          name: tempo
+      volumes:
+      - configMap:
+          name: tempo-config
+        name: tempo-config
+      - name: tempo
+  updateStrategy: {}
+status:
+  replicas: 0
+---
+apiVersion: v1
+kind: Service
+metadata:
+  creationTimestamp: null
+  labels:
+    app.kubernetes.io/name: tempo
+  name: tempo
+spec:
+  ports:
+  - name: grpc
+    port: 9091
+    targetPort: 9091
+  - name: http
+    port: 9090
+    targetPort: 9090
+  selector:
+    app.kubernetes.io/name: tempo
+status:
+  loadBalancer: {}
+---
+apiVersion: v1
+data:
+  tempo.yaml: |
+    auth_enabled: false
+    server:
+      http_listen_port: 9090
+    ingester:
+      trace_idle_period: 10s
+      max_block_duration: 5m0s
+      max_block_bytes: 1000000
+    distributor:
+      receivers:
+        otlp:
+          protocols:
+            grpc:
+              endpoint: 0.0.0.0:9091
+    compactor:
+      compaction:
+        compaction_window: 1h0m0s
+        max_block_bytes: 1000000
+        block_retention: 1h0m0s
+        compacted_block_retention: 10m0s
+    storage:
+      trace:
+        pool:
+          max_workers: 100
+          queue_depth: 10000
+        wal:
+          path: /data/wal
+          completedfilepath: ""
+        block:
+          index_downsample_bytes: 1048576
+          index_page_size_bytes: 256000
+          bloom_filter_false_positive: 0.05
+          encoding: zstd
+        backend: local
+        local:
+          path: /data/blocks
+kind: ConfigMap
+metadata:
+  creationTimestamp: null
+  labels:
+    app.kubernetes.io/name: tempo
+  name: tempo-config
