@@ -16,7 +16,7 @@ spec:
         - name: job
           value: app
         - name: handler
-          value: ping
+          value: "/ping"
       steps:
       - setWeight: 20
       - pause: {duration: 30s}
