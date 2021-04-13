@@ -3,18 +3,23 @@ package tracing
 import (
 	"context"
 	"io"
+	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/efficientgo/tools/core/pkg/errcapture"
 	"github.com/efficientgo/tools/core/pkg/merrors"
 	"github.com/pkg/errors"
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/exporters/otlp"
 	"go.opentelemetry.io/otel/exporters/otlp/otlpgrpc"
 	"go.opentelemetry.io/otel/exporters/stdout"
 	"go.opentelemetry.io/otel/propagation"
 	etrace "go.opentelemetry.io/otel/sdk/export/trace"
+	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	"go.opentelemetry.io/otel/semconv"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -24,6 +29,7 @@ type Option func(*options)
 type options struct {
 	newExporters []func() (SpanExporter, error)
 	sampler      Sampler
+	svcName      string
 }
 
 // WithStartedSpanExporter sets the exporter for spans.
@@ -69,6 +75,13 @@ func WithSampler(s Sampler) Option {
 	}
 }
 
+// WithSvcName sets service name. Usually it comes in format of service:app.
+func WithSvcName(s string) Option {
+	return func(o *options) {
+		o.svcName = s
+	}
+}
+
 type Provider struct {
 	trace.TracerProvider
 	propagation.TextMapPropagator
@@ -93,7 +106,20 @@ func NewProvider(opts ...Option) (*Provider, func() error, error) {
 		return nil, closeFn, errors.New("no exporters were configured")
 	}
 
-	var tpOpts []sdktrace.TracerProviderOption
+	svcName := o.svcName
+	if svcName == "" {
+		executable, err := os.Executable()
+		if err != nil {
+			svcName = "unknown_service:go"
+		} else {
+			svcName = "unknown_service:" + filepath.Base(executable)
+		}
+	}
+
+	tpOpts := []sdktrace.TracerProviderOption{
+		// TODO(bwplotka): Detect process info etc.
+		sdktrace.WithResource(resource.NewWithAttributes(attribute.KeyValue{Key: semconv.ServiceNameKey, Value: attribute.StringValue(svcName)})),
+	}
 	for _, ne := range o.newExporters {
 		exporter, err := ne()
 		if err != nil {

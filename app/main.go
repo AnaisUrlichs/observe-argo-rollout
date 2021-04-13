@@ -142,7 +142,10 @@ func runMain() (err error) {
 
 	var tracingProvider *tracing.Provider
 	if *traceEndpoint != "" {
-		tOpts := []tracing.Option{tracing.WithSampler(tracing.TraceIDRatioBasedSampler(*traceSamplingRatio))}
+		tOpts := []tracing.Option{
+			tracing.WithSampler(tracing.TraceIDRatioBasedSampler(*traceSamplingRatio)),
+			tracing.WithSvcName("demo:app"),
+		}
 		switch *traceEndpoint {
 		case "stdout":
 			tOpts = append(tOpts, tracing.WithPrinter(os.Stdout))
