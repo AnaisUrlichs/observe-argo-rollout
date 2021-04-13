@@ -804,7 +804,7 @@ const demoDashboardJSON = `{
       "targets": [
         {
           "exemplar": false,
-          "expr": "sum(analysis_run_metric_phase{phase=\"Error\"}) by(phase, metric)",
+          "expr": "sum(analysis_run_metric_phase{phase=~\"Error|Failed|Running\"}) by(phase, metric)",
           "hide": false,
           "interval": "",
           "legendFormat": "",
@@ -815,7 +815,7 @@ const demoDashboardJSON = `{
       "timeFrom": null,
       "timeRegions": [],
       "timeShift": null,
-      "title": "Argo Rollout AnalysisRun Errored Phases per Metric",
+      "title": "Argo Rollout AnalysisRun Errored/Failed Phases per Metric",
       "tooltip": {
         "shared": true,
         "sort": 0,
@@ -861,7 +861,7 @@ const demoDashboardJSON = `{
     "list": []
   },
   "time": {
-    "from": "now-5m",
+    "from": "now-15m",
     "to": "now"
   },
   "timepicker": {},
