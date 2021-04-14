@@ -8,10 +8,9 @@ spec:
   - name: handler
   metrics:
   - name: lower-than-20p-error-rate
-    interval: 30s
+    interval: 20s
     # TODO(bwplotka): Ideally this value is based on your SLO error budget.
-    successCondition: result[0] > 0.90
-    failureLimit: 3
+    successCondition: result[0] > 0.80
     provider:
       prometheus:
         address: "http://prom.demo.svc.cluster.local:9090"
@@ -19,13 +18,13 @@ spec:
         # we set scrape interval to 5s, so we are safe to do rate over 20s (e.g for 15s scrape, do at least 1m).
         query: |
           sum(rate(
-            http_requests_total{handler="{{args.handler}}",job=~"{{args.job}}",code!~"5.*"}[30s]
+            http_requests_total{handler="{{args.handler}}",job=~"{{args.job}}",code!~"5.*"}[20s]
           )) /
           sum(rate(
-            http_requests_total{handler="{{args.handler}}",job=~"{{args.job}}"}[30s]
+            http_requests_total{handler="{{args.handler}}",job=~"{{args.job}}"}[20s]
           ))
   - name: latency-90p-lower-than-1s
-    interval: 30s
+    interval: 20s
     # TODO(bwplotka): Ideally this value is based on your SLO latency budget. Lets assume 1s is too slow for 0.9 percentile.
     successCondition: result[0] < 1.0
     failureLimit: 3
@@ -33,4 +32,4 @@ spec:
       prometheus:
         address: "http://prom.demo.svc.cluster.local:9090"
         query: |
-          histogram_quantile(0.9, sum(rate(http_request_duration_seconds_bucket{handler="{{args.handler}}",job=~"{{args.job}}"}[30s])) by (le))
+          histogram_quantile(0.9, sum(rate(http_request_duration_seconds_bucket{handler="{{args.handler}}",job=~"{{args.job}}"}[20s])) by (le))
