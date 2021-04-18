@@ -4,6 +4,10 @@ Demo for _Automating and Monitoring Kubernetes Rollouts with Argo and Prometheus
 
 ## Performing Demo 
 
+The demo can be found on [Katacoda](https://katacoda.com/anaisurlichs/courses/demos/promcon2021).
+
+Alternatively, you can follow the instructios below.
+
 1. Deploy Kubernetes (tested with 1.18)
 
 1. Install argo [rollout kubectl plugin](https://argoproj.github.io/argo-rollouts/installation/#kubectl-plugin-installation)
@@ -32,57 +36,13 @@ sudo mv ./bat-v0.18.0-x86_64-unknown-linux-gnu/bat /usr/local/bin/bat
  * `b`: start from beginning 
  * `n`: start from end 
 
+ The structure of the demo can be viewed [here](https://github.com/AnaisUrlichs/observe-argo-rollout/blob/main/demo-arch-all.txt).
 
-## Draft
+## Grafana Dashboard
 
-Install Argo Rollouts
-```
-kubectl create namespace argo-rollouts
-kubectl apply -n argo-rollouts -f https://raw.githubusercontent.com/argoproj/argo-rollouts/stable/manifests/install.yaml
-```
+Once the first Argo rollout is deployed, you can view the metrics of the client and ping-pong app in the Grafana Dashboard. 
+Katacoda provides you with a link to Prometheus and Grafana. Simply navigate to Dashboards < Manage < Demo and make sure that the pinger is deployed and running to see metrics.
 
-Install Argo CLI
-```
-curl -LO https://github.com/argoproj/argo-rollouts/releases/latest/download/kubectl-argo-rollouts-linux-amd64
-chmod +x ./kubectl-argo-rollouts-linux-amd64
-sudo mv ./kubectl-argo-rollouts-linux-amd64 /usr/local/bin/kubectl-argo-rollouts
-```
+![Grafana Gif](grafana.gif)
 
-test Argo Rollouts version
-```
-kubectl argo rollouts version
-```
 
-Install Prometheus and Grafana
-
-```
-kubectl apply -n demo -f manifests/generated/monitoring
-```
-
-Open Prometheus dashboard
-```
- kubectl port-forward -n demo service/prom 9090
-```
-
-Open prometheus dashboard
-```
- kubectl port-forward -n demo service/grafana 3000
-```
-
-Applying Rollout Service, Rollout, and Analysis Template
-```
-kubectl apply -n demo -f manifests/application/services.yaml
-kubectl apply -n demo -f manifests/application/application-rollout.yaml
-kubectl apply -n demo -f manifests/application/analysis-template.yaml
-```
-
-Now have a look at the rollout 
-
-```
-kubectl argo rollouts -n demo get rollout rollouts-demo
-```
-
-Now deploy a new app version that will trigger the canary deployment
-```
-kubectl argo rollouts -n demo set image rollouts-demo rollouts-demo=anaisurlichs/ping-pong:3.0
-```
